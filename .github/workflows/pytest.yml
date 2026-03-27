@@ -77,7 +77,7 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest
+          poetry run python -m pytest
         env:
           USE_POSTGRES: True
           DATABASE_NAME: test_db

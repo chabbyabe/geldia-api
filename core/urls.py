@@ -36,7 +36,6 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("", RedirectView.as_view(url="/redoc/", permanent=False)),
     path("admin/", admin.site.urls),
-    path("api/ledger/", include("ledger.urls")),
     path("api/users/", include("users.urls")),
     # Swagger URLs
     path('swagger.json/', schema_view.without_ui(cache_timeout=0), name='schema-json'),

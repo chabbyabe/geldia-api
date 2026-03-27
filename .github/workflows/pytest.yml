@@ -68,6 +68,7 @@ jobs:
         run: |
           poetry run python manage.py migrate
         env:
+          USE_POSTGRES: True
           DATABASE_NAME: test_db
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres
@@ -78,6 +79,7 @@ jobs:
         run: |
           poetry run pytest
         env:
+          USE_POSTGRES: True
           DATABASE_NAME: test_db
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres

@@ -2,48 +2,90 @@ name: Django CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Service containers to run with `container-job`
     services:
-      # Label used to access the service container
       redis:
-        # Docker Hub image
-        image: redis
-        # Set health checks to wait until redis has started
+        image: redis:7
+        ports:
+          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
-          # Maps port 6379 on service container to the host
-          - 6379:6379
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: 3.10.13
+          cache: pip
 
-      - name: Install Dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpq-dev
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install poetry
-          poetry install
+          poetry install --with test --no-interaction
 
-      - name: Run Tests
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -U postgres && break
+            echo "Waiting for Postgres..."
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: |
+          poetry run python manage.py migrate
+        env:
+          DATABASE_NAME: test_db
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+
+      - name: Run tests
         run: |
           poetry run pytest
         env:
-          # The hostname used to communicate with the Redis service container
-          REDIS_HOST: localhost
-          # The default Redis port
+          DATABASE_NAME: test_db
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+
+          REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+
+          SECRET_KEY: test-secret-key
+          DEBUG: 0

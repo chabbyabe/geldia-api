@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any, Final, TypedDict
 
 from decouple import Csv, config
-import sys
 
 class DatabaseSettings(TypedDict):
     ENGINE: str
@@ -144,14 +143,6 @@ def get_database_config() -> DatabaseConfig:
 
 DATABASES = get_database_config()
 
-if "test" in sys.argv:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
-        }
-    }
-    
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 

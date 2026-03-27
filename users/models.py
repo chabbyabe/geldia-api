@@ -71,3 +71,42 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
         if self.email:
             return f"{self.email}".split("@")[0]
         return None
+
+
+class Account(CommonInfo):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")
+    name = models.CharField(max_length=255)
+    icon = models.CharField(max_length=255, null=True, blank=True)
+    color = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        default="#006CD1",
+        help_text="Hex color, e.g., '123456'",
+    )
+    balance = models.DecimalField(default=0, max_digits=19, decimal_places=2)
+    count_in_assets = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+    is_shared = models.BooleanField(default=False, help_text="Is shared with other person")
+    notes = models.CharField(max_length=300, blank=True)
+    shared_users = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="shared_accounts",
+        help_text="Users this account is shared with"
+    )
+
+    objects = AccountQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-is_default", "id"]
+        constraints = [
+            UniqueConstraint(
+                fields=["user"],
+                condition=Q(is_default=True),
+                name="only_one_default_account_per_user",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.user.username})"

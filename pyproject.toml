@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "core"
+version = "0.1.0"
+description = ""
+authors = ["Abegail Sieffers - Isidro <chabbyabe@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^5.0"
+djangorestframework = "^3.14.0"
+django-cors-headers = "^4.3.1"
+python-decouple = "^3.8"
+dj-rest-auth = "^6.0.0"
+djangorestframework-simplejwt = "^5.3.1"
+psycopg2-binary = "^2.9.9"
+pytest-django = "^4.8.0"
+pytest-asyncio = "^0.23.7"
+drf-yasg = "^1.21.14"
+django-filter = "^25.2"
+uwsgi = "^2.0.31"
+mysqlclient = "^2.2.8"
+
+[tool.poetry.group.test.dependencies]
+pytest-django = "^4.7.0"
+factory-boy = "^3.3.0"
+
+[tool.poetry.group.dev.dependencies]
+django-naomi = "^0.8"
+mypy = "^1.18.2"
+django-stubs = { version = "^5.2.7", extras = ["compatible-mypy"] }
+djangorestframework-stubs = "^3.16.5"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings"
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+pretty = true
+show_error_codes = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+exclude = ["^env/", "^core/static/", ".*/migrations/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "decouple",
+    "dj_rest_auth.*",
+    "drf_yasg.*",
+    "factory.*",
+    "faker.*",
+    "MySQLdb.*",
+    "psycopg2",
+]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "core.settings"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

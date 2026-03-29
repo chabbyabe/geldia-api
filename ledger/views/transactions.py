@@ -6,15 +6,22 @@ from rest_framework.response import Response
 from users.models import Account
 from ledger.models import Transaction, Tag, Category, Place, Store, TransactionType, TransactionLog
 from ledger.serializers.transactions import TransactionSerializer
+from ledger.serializers.accounts import AccountSimpleSerializer
+from ledger.serializers.categories import CategorySimpleSerializer
+from ledger.serializers.tags import TagSimpleSerializer
+from ledger.serializers.places import PlaceSimpleSerializer
+from ledger.serializers.stores import StoreSimpleSerializer
+from ledger.serializers.transaction_types import TransactionTypeSimpleSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIFilterBackend
 from core.viewsets.mixins import UserAuditMixin
 from django.db import transaction
 from decimal import Decimal
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from ledger.constants import TxnType, UserAction
+from ledger.constants import TxnType, UserAction, DateRange
 from rest_framework import serializers
 from django.utils import timezone
 from ledger.utils import get_or_create_instance, clear_validated_keys, serialize_for_json
@@ -429,3 +436,29 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
             # Finally delete the transaction
             instance.delete()
+
+
+class GetInitialTransactionDataView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Fetch the user's data
+        accounts = Account.objects.visible_to(user).distinct().order_by('-is_default', '-created_at')
+        main_categories = Category.objects.filter(created_by=user)
+        tags = Tag.objects.filter(created_by=user)
+        stores = Store.objects.filter(created_by=user)
+        places = Place.objects.filter(created_by=user)
+
+        # Serialize the data
+        data = {
+            "accounts": AccountSimpleSerializer(accounts, many=True).data,
+            "categories": CategorySimpleSerializer(main_categories, many=True).data,
+            "tags": TagSimpleSerializer(tags, many=True).data,
+            "stores": StoreSimpleSerializer(stores, many=True).data,
+            "places": PlaceSimpleSerializer(places, many=True).data,
+            "transaction_types" : TransactionTypeSimpleSerializer(
+                TransactionType.objects.all(), many=True).data
+        }
+
+        return Response(data)

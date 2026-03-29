@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ledger.constants import TxnType
-from ledger.models import Transaction, TransactionType
+from ledger.models import Category, Place, Store, Tag, Transaction, TransactionType
 from tests import factories
 from users.models import Account
 
@@ -85,3 +85,41 @@ class TestTransactionViewSet:
         assert response.status_code == http_client.CREATED
         account.refresh_from_db()
         assert account.balance == Decimal("800.00")
+
+
+class TestInitialTransactionDataView:
+    def _auth(self, client, username="txn_initial_user", password="password123"):
+        user = factories.User(username=username, password=password)
+        client.authenticate_user(username, password)
+        return user
+
+    def _txn_type(self, name):
+        return TransactionType.objects.create(name=name, color="#111111", icon="icon")
+
+    def test_requires_authentication(self, client):
+        response = client.get(reverse("ledger:intial-data"))
+
+        assert response.status_code == http_client.UNAUTHORIZED
+        assert response["content-type"] == "application/json"
+
+    def test_returns_expected_keys(self, client):
+        user = self._auth(client)
+
+        Account.objects.create(user=user, name="Main", balance=Decimal("50.00"))
+        ttype = self._txn_type(TxnType.EXPENSES)
+        Category.objects.create(name="Food", transaction_type=ttype, created_by=user)
+        Tag.objects.create(name="Urgent", created_by=user)
+        Store.objects.create(name="Market", created_by=user)
+        Place.objects.create(name="Amsterdam", created_by=user)
+
+        response = client.get(reverse("ledger:intial-data"))
+
+        assert response.status_code == http_client.OK
+        assert set(response.data.keys()) == {
+            "accounts",
+            "categories",
+            "tags",
+            "stores",
+            "places",
+            "transaction_types",
+        }

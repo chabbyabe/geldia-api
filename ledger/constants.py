@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-
 @dataclass(frozen=True)
 class TxnType:
     INCOME: str = "Income"
     EXPENSES: str = "Expenses"
     TRANSFER: str = "Transfer"
-
 
 @dataclass(frozen=True)
 class UserAction:
@@ -14,13 +12,11 @@ class UserAction:
     UPDATE: str = "updated"
     DELETE: str = "deleted"
 
-
 ACTION_CHOICES: tuple[tuple[str, str], ...] = (
     (UserAction.CREATE, "Created"),
     (UserAction.UPDATE, "Updated"),
     (UserAction.DELETE, "Deleted"),
 )
-
 
 @dataclass(frozen=True)
 class DateRange:

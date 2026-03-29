@@ -20,6 +20,9 @@ class TestTransactionViewSet:
     def _txn_type(self, name):
         return TransactionType.objects.create(name=name, color="#111111", icon="icon")
 
+    def _account(self, user, name="Main", balance="0.00"):
+        return Account.objects.create(user=user, name=name, balance=Decimal(balance))
+
     def test_requires_authentication(self, client):
         response = client.get(reverse("ledger:transaction-list"))
 
@@ -32,8 +35,8 @@ class TestTransactionViewSet:
 
         income = self._txn_type(TxnType.INCOME)
 
-        account = Account.objects.create(user=user, name="Main", balance=Decimal("0.00"))
-        other_account = Account.objects.create(user=other, name="Other", balance=Decimal("0.00"))
+        account = self._account(user)
+        other_account = self._account(other, name="Other")
 
         Transaction.all_objects.create(
             user=user,
@@ -64,14 +67,13 @@ class TestTransactionViewSet:
     def test_create_income_updates_account_balance(self, client):
         user = self._auth(client, username="txn_create_user")
         income = self._txn_type(TxnType.INCOME)
-        account = Account.objects.create(user=user, name="Salary", balance=Decimal("100.00"))
+        account = self._account(user, name="Salary", balance="100.00")
 
         response = client.post(
             reverse("ledger:transaction-list"),
             {
                 "user_id": user.id,
                 "account_id": account.id,
-                "account": account.id,
                 "transaction_type_id": income.id,
                 "name": "January Salary",
                 "amount": "1000.00",
@@ -86,6 +88,39 @@ class TestTransactionViewSet:
         account.refresh_from_db()
         assert account.balance == Decimal("800.00")
 
+    def test_create_transfer_updates_both_account_balances(self, client):
+        user = self._auth(client, username="txn_transfer_user")
+        transfer = self._txn_type(TxnType.TRANSFER)
+        from_account = self._account(user, name="Checking", balance="1000.00")
+        to_account = self._account(user, name="Savings", balance="250.00")
+
+        response = client.post(
+            reverse("ledger:transaction-list"),
+            {
+                "user_id": user.id,
+                "account_id": from_account.id,
+                "transaction_type_id": transfer.id,
+                "name": "Move to savings",
+                "amount": "125.00",
+                "pair_transaction": to_account.id,
+                "transaction_at": "2026-01-15T12:00:00Z",
+                "tags_names": [],
+            },
+            format="json",
+        )
+
+        assert response.status_code == http_client.CREATED
+
+        from_account.refresh_from_db()
+        to_account.refresh_from_db()
+
+        assert from_account.balance == Decimal("875.00")
+        assert to_account.balance == Decimal("375.00")
+
+        transaction = Transaction.objects.get(name="Move to savings")
+        assert transaction.account_id == from_account.id
+        assert transaction.pair_transaction_id == to_account.id
+
 
 class TestInitialTransactionDataView:
     def _auth(self, client, username="txn_initial_user", password="password123"):
@@ -96,6 +131,9 @@ class TestInitialTransactionDataView:
     def _txn_type(self, name):
         return TransactionType.objects.create(name=name, color="#111111", icon="icon")
 
+    def _account(self, user, name="Main", balance="0.00"):
+        return Account.objects.create(user=user, name=name, balance=Decimal(balance))
+
     def test_requires_authentication(self, client):
         response = client.get(reverse("ledger:intial-data"))
 
@@ -105,7 +143,7 @@ class TestInitialTransactionDataView:
     def test_returns_expected_keys(self, client):
         user = self._auth(client)
 
-        Account.objects.create(user=user, name="Main", balance=Decimal("50.00"))
+        self._account(user, balance="50.00")
         ttype = self._txn_type(TxnType.EXPENSES)
         Category.objects.create(name="Food", transaction_type=ttype, created_by=user)
         Tag.objects.create(name="Urgent", created_by=user)

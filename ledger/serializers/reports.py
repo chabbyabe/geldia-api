@@ -1,26 +1,28 @@
 from __future__ import annotations
 from rest_framework import serializers
+from typing import Any
+from decimal import Decimal
 from django.utils import timezone
 
 def year_bounds():
-    current_year = timezone.now().year
+    current_year : int = timezone.now().year
     return current_year - 3, current_year + 3
 
 
 def is_valid_year(year: int) -> bool:
-    min_year, max_year = year_bounds()
+    min_year : int; max_year: int = year_bounds()
     return min_year <= year <= max_year
 
-class IncomeReportSerializer(serializers.Serializer):
-    selected_year = serializers.IntegerField(required=False)
-    compare_year = serializers.IntegerField(required=False)
+
+class ReportParamRequestSerializer(serializers.Serializer):
+    selectedYear = serializers.IntegerField(required=False)
+    compareYear = serializers.IntegerField(required=False)
 
     def validate(self, data):
-        selected = data.get("selectedYear")
-        compare = data.get("compareYear")
+        selected : int | None = data.get("selectedYear")
+        compare : int | None = data.get("compareYear")
 
-        if selected is not None and compare is not None:
-
+        if selected and compare:
             if selected == compare:
                 raise serializers.ValidationError({
                     "compareYear": "Cannot be the same as selectedYear."
@@ -32,10 +34,53 @@ class IncomeReportSerializer(serializers.Serializer):
                 })
 
         return data
-        
 
-    def get_selected_year(self) -> int:
+    def get_selected_year(self):
         return int(self.validated_data.get("selectedYear", timezone.now().year))
 
-    def get_compare_year(self) -> int | None:
-        return self.validated_data.get("compareYear", None)
+    def get_compare_year(self):
+        return self.validated_data.get("compareYear")
+
+
+class IncomeCompanySerializer(serializers.Serializer):
+    name = serializers.CharField()
+    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    net_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class IncomeMonthSerializer(serializers.Serializer):
+    month = serializers.IntegerField()
+    month_label = serializers.CharField()
+    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    net_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    companies = IncomeCompanySerializer(many=True)
+    
+        
+class IncomeReportResponseSerializer(serializers.Serializer):
+    selected_year = serializers.IntegerField()
+    compare_year = serializers.IntegerField(allow_null=True, required=False)
+    base_data = IncomeMonthSerializer(many=True)
+    compare_data = IncomeMonthSerializer(many=True, allow_null=True, required=False)
+
+
+class ExpensesReportSerializer(serializers.Serializer):
+    month = serializers.IntegerField()
+    date = serializers.CharField()
+    categories = serializers.DictField(
+        child=serializers.DecimalField(max_digits=12, decimal_places=2)
+    )
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+class ExpensesReportSerializer(serializers.Serializer):
+    month = serializers.IntegerField()
+    date = serializers.CharField()
+    categories = serializers.DictField(
+        child=serializers.DecimalField(max_digits=12, decimal_places=2)
+    )
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+class ExpensesReportResponseSerializer(serializers.Serializer):
+    selected_year = serializers.IntegerField()
+    compare_year = serializers.IntegerField(allow_null=True, required=False)
+    base_data = ExpensesReportSerializer(many=True)
+    compare_data = ExpensesReportSerializer(many=True, allow_null=True, required=False)

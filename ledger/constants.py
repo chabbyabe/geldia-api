@@ -31,3 +31,8 @@ MONTHS : dict[int, str] = {
     5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
     9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
 }
+
+@dataclass(frozen=True)
+class BaseFilterType:
+    TRANSACTION: str = "Transaction"
+    TRANSACTION_LOG: str = "TransactionLog"

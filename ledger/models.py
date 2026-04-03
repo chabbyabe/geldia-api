@@ -13,12 +13,16 @@ class Tag(CommonInfo):
 
     class Meta:
         unique_together = ('created_by', 'name')
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
     
 class Place(CommonInfo):
     name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
@@ -29,6 +33,9 @@ class TransactionType(CommonInfo):
     color = models.CharField(max_length=20)
     icon = models.CharField(max_length=100)
     notes = models.CharField(max_length=300, blank=True, null=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
@@ -42,12 +49,18 @@ class Category(CommonInfo):
     color = models.CharField(max_length=20, blank=True, null=True)
     icon = models.CharField(max_length=100, blank=True, null=True)
 
+    class Meta:
+        ordering = ["name"]
+
     def __str__(self) -> str:
         return self.name
     
 
 class Store(CommonInfo):
     name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
@@ -69,6 +82,9 @@ class RecurringTransaction(CommonInfo):
     start_at = models.DateTimeField()
     end_at = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.user})"
@@ -106,7 +122,7 @@ class Transaction(CommonInfo):
         return f"{self.name} ({self.amount})"
     
     class Meta:
-        ordering = ["-id"]  # default ordering if no ?ordering is provided
+        ordering = ["-id"] 
         
 
 class Receipt(CommonInfo):
@@ -140,7 +156,7 @@ class TransactionLog(models.Model):
     new_data = models.JSONField(null=True, blank=True)
     note = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    
     class Meta:
         indexes = [
             models.Index(fields=["transaction", "created_at"]),

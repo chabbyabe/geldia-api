@@ -14,14 +14,14 @@ from ledger.serializers.stores import StoreSimpleSerializer
 from ledger.serializers.transaction_types import TransactionTypeSimpleSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from ledger.filters import MUIFilterBackend
+from ledger.filters import MUIBaseFilterBackend
 from core.viewsets.mixins import UserAuditMixin
 from django.db import transaction
 from decimal import Decimal
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from ledger.constants import TxnType, UserAction, DateRange
+from ledger.constants import TxnType, UserAction, BaseFilterType
 from rest_framework import serializers
 from django.utils import timezone
 from ledger.utils import get_or_create_instance, clear_validated_keys, serialize_for_json
@@ -61,6 +61,11 @@ def log_transaction(instance : any, action: str, created: bool = False, **kwargs
         performed_by=instance.user
     )
 
+class TransactionFilterBackend(MUIBaseFilterBackend):
+    date_field = "transaction_at"
+    empty_string_fields = ["name", "notes", "store__name", "place__name"]
+    filter_type = BaseFilterType.TRANSACTION
+
 class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -71,7 +76,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
         DjangoFilterBackend,
         SearchFilter,
         OrderingFilter,
-        MUIFilterBackend
+        TransactionFilterBackend
     ]
 
     search_fields = [

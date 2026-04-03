@@ -8,6 +8,8 @@ from .views.accounts import AccountViewSet
 from .views.transactions import TransactionViewSet, GetInitialTransactionDataView
 from users.views import UserViewSet
 from .views.dashboard import DashboardViewSet
+from .views.reports import ReportViewSet
+from .views.transaction_logs import TransactionLogViewSet
 
 urlpatterns = []
 
@@ -22,6 +24,8 @@ router.register(r'accounts', AccountViewSet, basename='account')
 router.register(r'transactions', TransactionViewSet, basename='transaction')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')
+router.register(r'reports', ReportViewSet, basename='report')
+router.register(r'logs', TransactionLogViewSet, basename='log')
 
 urlpatterns = [
     path('', include(router.urls)),

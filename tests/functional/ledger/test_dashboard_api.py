@@ -220,7 +220,7 @@ class TestDashboardViewSet:
         assert response.status_code == http_client.OK
         assert len(response.data) == 0
 
-    def test_summary_overview_returns_income_expenses_and_savings(self, client):
+    def test_summary_overview_returns_income_expenses_and_savings(self, client, monkeypatch):
         user = self._create_user_and_authenticate(client, username="summary_user")
 
         income = self._create_transaction_type(TxnType.INCOME, color="#0A0", icon="income")
@@ -231,6 +231,15 @@ class TestDashboardViewSet:
 
         current_year = self._get_current_year()
         in_range_date = timezone.make_aware(datetime(current_year, 6, 1, 12, 0, 0))
+
+        monkeypatch.setattr(
+            "ledger.views.dashboard.get_date_range",
+            lambda request, filter_type=None: (
+                timezone.make_aware(datetime(current_year, 1, 1, 0, 0, 0)),
+                timezone.make_aware(datetime(current_year, 12, 31, 0, 0, 0)),
+            ),
+        )
+
         self._create_transaction(
             user=user,
             account=main_account,

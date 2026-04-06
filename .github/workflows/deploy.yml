@@ -1,0 +1,51 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+
+    environment: prod
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      # 🚀 Deploy via SSH
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ secrets.WORK_DIR }}
+
+            echo "Pull latest code"
+            git pull origin ${{ secrets.MAIN_BRANCH }}
+
+            echo "Install Poetry if missing"
+            command -v poetry || pip install poetry
+
+            echo "Install dependencies"
+            poetry install --no-interaction --no-root
+
+            echo "Run migrations"
+            poetry run python manage.py migrate || true
+
+            echo "Collect static"
+            poetry run python manage.py collectstatic --noinput || true

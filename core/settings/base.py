@@ -20,6 +20,9 @@ from typing import Any, Final, TypedDict
 
 from decouple import Csv, config
 
+# Build paths inside the project like this: BASE_DIR / "subdir".
+BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent.parent
+
 class DatabaseSettings(TypedDict):
     ENGINE: str
     NAME: str
@@ -97,7 +100,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -173,9 +176,6 @@ TIME_ZONE = "Europe/Amsterdam"
 USE_I18N = True
 
 USE_TZ = True
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/

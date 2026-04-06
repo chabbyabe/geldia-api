@@ -20,7 +20,7 @@ from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.permissions import AllowAny
-from django.views.generic import RedirectView
+from django.views.generic import TemplateView
 
 # Swagger Schema
 schema_view = get_schema_view(
@@ -34,7 +34,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/redoc/", permanent=False)),
+    path("", TemplateView.as_view(template_name="landing.html"), name="landing"),
     path("admin/", admin.site.urls),
     path("api/users/", include("users.urls")),
     path("api/ledger/", include("ledger.urls")),

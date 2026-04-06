@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Geldia API</title>
+    <meta
+        name="description"
+        content="Geldia API powers transaction tracking, reporting, and financial insights for modern budgeting workflows."
+    >
+    <style>
+        :root {
+            --color-primary: #006CD1;
+            --color-primary-dark: #0053A3;
+            --color-primary-light: #4DA3FF;
+            --color-secondary: #3389dc;
+            --color-success: #2EB872;
+            --color-warning: #F5A524;
+            --color-error: #E5484D;
+            --color-bg: #F9FAFC;
+            --color-surface: #FFFFFF;
+            --color-text: #1F2A37;
+            --color-muted: #6B7C93;
+            --color-border: rgba(0, 108, 209, 0.12);
+            --shadow-soft: 0 24px 60px rgba(0, 83, 163, 0.12);
+            --shadow-card: 0 14px 32px rgba(31, 42, 55, 0.08);
+            --radius: 5px;
+            --radius-lg: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+            color: var(--color-text);
+            background:
+                radial-gradient(circle at top left, rgba(77, 163, 255, 0.24), transparent 30%),
+                radial-gradient(circle at right center, rgba(0, 108, 209, 0.18), transparent 22%),
+                linear-gradient(180deg, #ffffff 0%, var(--color-bg) 58%, #eef5fc 100%);
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .page-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 56px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            box-shadow: 0 16px 30px rgba(0, 108, 209, 0.28);
+        }
+
+        .top-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .pill-link {
+            padding: 10px 14px;
+            border-radius: 999px;
+            color: var(--color-primary-dark);
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 108, 209, 0.12);
+            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .pill-link:hover {
+            transform: translateY(-1px);
+            border-color: rgba(0, 108, 209, 0.3);
+            background: #fff;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 28px;
+            align-items: stretch;
+        }
+
+        .hero-panel,
+        .feature-card,
+        .metric-card,
+        .route-card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            box-shadow: var(--shadow-card);
+        }
+
+        .hero-panel {
+            padding: 48px;
+            border-radius: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-panel::after {
+            content: "";
+            position: absolute;
+            inset: auto -80px -110px auto;
+            width: 220px;
+            height: 220px;
+            background: linear-gradient(135deg, rgba(77, 163, 255, 0.24), rgba(0, 108, 209, 0.06));
+            border-radius: 50%;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            margin-bottom: 22px;
+            border-radius: 999px;
+            color: var(--color-primary-dark);
+            background: rgba(77, 163, 255, 0.14);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(2.8rem, 6vw, 4.8rem);
+            line-height: 0.96;
+            letter-spacing: -0.04em;
+            max-width: 11ch;
+        }
+
+        .hero-copy {
+            margin: 24px 0 30px;
+            max-width: 60ch;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--color-muted);
+        }
+
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 0 20px;
+            border-radius: 999px;
+            font-weight: 700;
+            transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .button-primary {
+            color: #fff;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            box-shadow: 0 18px 30px rgba(0, 108, 209, 0.22);
+        }
+
+        .button-secondary {
+            color: var(--color-primary-dark);
+            background: #fff;
+            border: 1px solid rgba(0, 108, 209, 0.18);
+        }
+
+        .hero-aside {
+            display: grid;
+            gap: 18px;
+        }
+
+        .metric-card {
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .metric-kicker {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--color-muted);
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .metric-note {
+            color: var(--color-muted);
+            line-height: 1.6;
+        }
+
+        .metric-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .metric-tag {
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .metric-tag.success {
+            background: #E6F7EF;
+            color: #198754;
+        }
+
+        .metric-tag.warning {
+            background: #FFF5E5;
+            color: #8A5A00;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 22px;
+        }
+
+        .feature-card,
+        .route-card {
+            border-radius: var(--radius-lg);
+            padding: 26px;
+        }
+
+        .feature-card h2,
+        .route-card h2 {
+            margin: 0 0 14px;
+            font-size: 1.2rem;
+        }
+
+        .feature-card p,
+        .route-card p {
+            margin: 0;
+            color: var(--color-muted);
+            line-height: 1.65;
+        }
+
+        .feature-accent {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 18px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            background: linear-gradient(135deg, rgba(77, 163, 255, 0.18), rgba(0, 108, 209, 0.08));
+        }
+
+        .routes {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .route-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .route-path {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+            font-size: 0.95rem;
+            color: var(--color-primary-dark);
+            background: rgba(77, 163, 255, 0.12);
+            padding: 8px 10px;
+            border-radius: var(--radius);
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 22px;
+            padding: 18px 4px 0;
+            color: var(--color-muted);
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 980px) {
+            .hero,
+            .section-grid,
+            .routes {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-panel {
+                padding: 34px 24px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .page-shell {
+                width: min(100% - 24px, 1180px);
+                padding-top: 18px;
+                padding-bottom: 28px;
+            }
+
+            .topbar,
+            .footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            h1 {
+                max-width: 8ch;
+            }
+
+            .feature-card,
+            .route-card,
+            .metric-card {
+                padding: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="/">
+                <span class="brand-mark">G</span>
+                <span>Geldia API</span>
+            </a>
+            <nav class="top-links" aria-label="Quick links">
+                <a class="pill-link" href="/swagger/">Swagger UI</a>
+                <a class="pill-link" href="/redoc/">ReDoc</a>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <article class="hero-panel">
+                <div class="eyebrow">Finance Infrastructure</div>
+                <h1>Track money with clarity, not clutter.</h1>
+                <p class="hero-copy">
+                    Geldia API is the backend layer for transaction capture, category management,
+                    reporting, dashboards, and the account workflows behind your finance product.
+                    It gives your web app a focused platform for income, expenses, savings, and trends.
+                </p>
+                <div class="cta-row">
+                    <a class="button button-primary" href="/swagger/">Explore the API</a>
+                </div>
+            </article>
+
+            <aside class="hero-aside">
+                <section class="metric-card">
+                    <div class="metric-kicker">What this backend covers</div>
+                    <div class="metric-value">Users, ledger, reports.</div>
+                    <p class="metric-note">
+                        Built for authenticated financial workflows with room for dashboards, tagged
+                        transactions, account summaries, and reporting views.
+                    </p>
+                    <div class="metric-tags">
+                        <span class="metric-tag success">JWT auth</span>
+                        <span class="metric-tag warning">API docs included</span>
+                    </div>
+                </section>
+            </aside>
+        </section>
+
+        <section class="section-grid" aria-label="Highlights">
+            <article class="feature-card">
+                <div class="feature-accent">01</div>
+                <h2>Operational endpoints</h2>
+                <p>
+                    Manage categories, places, tags, stores, accounts, transactions, logs, dashboards,
+                    and reports through a consistent REST structure.
+                </p>
+            </article>
+            <article class="feature-card">
+                <div class="feature-accent">02</div>
+                <h2>Built for product integration</h2>
+                <p>
+                    Use this service as the foundation for your main web app while keeping docs,
+                    auth flows, and data operations cleanly separated.
+                </p>
+            </article>
+            <article class="feature-card">
+                <div class="feature-accent">03</div>
+                <h2>Clear developer entry points</h2>
+                <p>
+                    Swagger, ReDoc, and raw schema output stay available so developers can test and
+                    inspect the platform without losing the branded homepage.
+                </p>
+            </article>
+        </section>
+
+        <section class="routes" aria-label="Key routes">
+            <article class="route-card">
+                <div class="route-title">
+                    <h2>Ledger API</h2>
+                    <span class="route-path">/api/ledger/</span>
+                </div>
+                <p>
+                    The main finance domain with categories, accounts, transactions, reporting, logs,
+                    tags, dashboard data, and supporting resources.
+                </p>
+            </article>
+        </section>
+
+        <footer class="footer">
+            <span>Geldia API &copy; {% now "Y" %} </span>
+        </footer>
+    </main>
+</body>
+</html>

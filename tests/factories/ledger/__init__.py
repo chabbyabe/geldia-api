@@ -1,5 +1,4 @@
-from .users.user import User
-from .ledger.transaction_type import (
+from .transaction_type import (
     ExpensesTransactionType,
     IncomeTransactionType,
     TransactionType,

@@ -12,22 +12,22 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='category',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
         migrations.AlterModelOptions(
             name='place',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
         migrations.AlterModelOptions(
             name='recurringtransaction',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
         migrations.AlterModelOptions(
             name='store',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
         migrations.AlterModelOptions(
             name='transactiontype',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
     ]

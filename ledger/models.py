@@ -13,7 +13,7 @@ class Tag(CommonInfo):
 
     class Meta:
         unique_together = ('created_by', 'name')
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -22,7 +22,7 @@ class Place(CommonInfo):
     name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -35,7 +35,7 @@ class TransactionType(CommonInfo):
     notes = models.CharField(max_length=300, blank=True, null=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -43,14 +43,20 @@ class TransactionType(CommonInfo):
 
 class Category(CommonInfo):
     name = models.CharField(max_length=100, help_text='Salary, Food, Insurance, Housing')
-    transaction_type = models.ForeignKey(TransactionType, related_name='categories', on_delete=models.CASCADE)
+    transaction_type = models.ForeignKey(
+        TransactionType,
+        related_name='categories',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     parent_category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True)
     notes = models.CharField(max_length=100, blank=True, null=True)
     color = models.CharField(max_length=20, blank=True, null=True)
     icon = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -60,7 +66,7 @@ class Store(CommonInfo):
     name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -84,7 +90,7 @@ class RecurringTransaction(CommonInfo):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.user})"

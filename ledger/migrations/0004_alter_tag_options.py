@@ -12,6 +12,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='tag',
-            options={'ordering': ['name']},
+            options={'ordering': ['-created_at']},
         ),
     ]

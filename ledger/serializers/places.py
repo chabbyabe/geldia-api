@@ -29,7 +29,7 @@ class PlaceSerializer(serializers.ModelSerializer):
                 existing = existing.exclude(pk=instance.pk)
 
             if existing.exists():
-                raise serializers.ValidationError({"name": "Place already exists."})
+                raise serializers.ValidationError("Place already exists.")
 
         return attrs
 

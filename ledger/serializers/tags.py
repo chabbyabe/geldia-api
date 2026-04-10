@@ -23,7 +23,7 @@ class TagSerializer(serializers.ModelSerializer):
                 existing = existing.exclude(pk=instance.pk)
 
             if existing.exists():
-                raise serializers.ValidationError({"name": "Tag already exists."})
+                raise serializers.ValidationError("Tag already exists.")
 
         return attrs
 

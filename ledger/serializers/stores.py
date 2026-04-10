@@ -29,7 +29,7 @@ class StoreSerializer(serializers.ModelSerializer):
                 existing = existing.exclude(pk=instance.pk)
 
             if existing.exists():
-                raise serializers.ValidationError({"name": "Store already exists."})
+                raise serializers.ValidationError("Store already exists.")
 
         return attrs
 class StoreSimpleSerializer(serializers.ModelSerializer):

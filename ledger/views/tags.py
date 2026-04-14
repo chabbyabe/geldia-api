@@ -12,6 +12,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIBaseFilterBackend
 from ledger.constants import BaseFilterType
+from django.db.models import Q
 
 
 class TagFilter(MUIBaseFilterBackend):
@@ -37,5 +38,14 @@ class TagViewSet(UserAuditMixin, viewsets.ModelViewSet):
         "color",
     ]
 
+    ordering_fields = [
+        "name",
+        "color",
+        "created_at",
+        "created_by__username",
+        "updated_at",
+        "updated_by__username"
+    ]
+
     def get_queryset(self):
-        return Tag.objects.filter(created_by=self.request.user)
+        return Tag.objects.all()

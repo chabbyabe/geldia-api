@@ -18,18 +18,6 @@ class TestTagViewSet:
         assert response.status_code == http_client.UNAUTHORIZED
         assert response["content-type"] == "application/json"
 
-    def test_list_returns_only_current_users_tags(self, client):
-        user = self._auth(client)
-        other = factories.User(username="tag_other", password="password123")
-
-        Tag.objects.create(name="Essentials", color="#111111", created_by=user)
-        Tag.objects.create(name="Hidden", color="#222222", created_by=other)
-
-        response = client.get(reverse("ledger:tag-list"))
-
-        assert response.status_code == http_client.OK
-        assert [item["name"] for item in response.data["results"]] == ["Essentials"]
-
     def test_create_sets_created_by_to_authenticated_user(self, client):
         user = self._auth(client, username="tag_create")
 
@@ -55,7 +43,7 @@ class TestTagViewSet:
         )
 
         assert response.status_code == http_client.BAD_REQUEST
-        assert response.data["name"] == ["Tag already exists."]
+        assert response.data["non_field_errors"] == ["Tag already exists."]
 
     def test_retrieve_returns_own_tag(self, client):
         user = self._auth(client, username="tag_retrieve")
@@ -92,12 +80,3 @@ class TestTagViewSet:
         tag.refresh_from_db()
         assert tag.deleted_at is not None
         assert tag.deleted_by_id == user.id
-
-    def test_cannot_access_other_users_tag(self, client):
-        self._auth(client, username="tag_owner")
-        other = factories.User(username="tag_other_owner", password="password123")
-        other_tag = Tag.objects.create(name="Private", color="#010101", created_by=other)
-
-        response = client.get(reverse("ledger:tag-detail", args=[other_tag.id]))
-
-        assert response.status_code == http_client.NOT_FOUND

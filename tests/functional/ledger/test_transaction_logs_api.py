@@ -19,7 +19,11 @@ class TestTransactionLogViewSet:
         return user
 
     def _txn_type(self, name=TxnType.EXPENSES):
-        return TransactionType.objects.create(name=name, color="#111111", icon="icon")
+        transaction_type, _ = TransactionType.objects.get_or_create(
+            name=name,
+            defaults={"color": "#111111", "icon": "icon"},
+        )
+        return transaction_type
 
     def _account(self, user, name="Main", balance="0.00"):
         return Account.objects.create(user=user, name=name, balance=Decimal(balance))

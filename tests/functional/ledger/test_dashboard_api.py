@@ -29,7 +29,11 @@ class TestDashboardViewSet:
         )
 
     def _create_transaction_type(self, name, color="#111111", icon="icon"):
-        return TransactionType.objects.create(name=name, color=color, icon=icon)
+        transaction_type, _ = TransactionType.objects.get_or_create(
+            name=name,
+            defaults={"color": color, "icon": icon},
+        )
+        return transaction_type
 
     def _create_category(self, name, transaction_type, parent=None, color="#222222", icon="tag"):
         return Category.objects.create(

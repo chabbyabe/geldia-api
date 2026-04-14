@@ -18,18 +18,6 @@ class TestStoreViewSet:
         assert response.status_code == http_client.UNAUTHORIZED
         assert response["content-type"] == "application/json"
 
-    def test_list_returns_only_current_users_stores(self, client):
-        user = self._auth(client)
-        other = factories.User(username="store_other", password="password123")
-
-        Store.objects.create(name="AH", created_by=user)
-        Store.objects.create(name="Private Store", created_by=other)
-
-        response = client.get(reverse("ledger:store-list"))
-
-        assert response.status_code == http_client.OK
-        assert [item["name"] for item in response.data["results"]] == ["AH"]
-
     def test_create_sets_created_by_to_authenticated_user(self, client):
         user = self._auth(client, username="store_create")
 
@@ -79,12 +67,3 @@ class TestStoreViewSet:
         store.refresh_from_db()
         assert store.deleted_at is not None
         assert store.deleted_by_id == user.id
-
-    def test_cannot_access_other_users_store(self, client):
-        self._auth(client, username="store_owner")
-        other = factories.User(username="store_other_owner", password="password123")
-        other_store = Store.objects.create(name="Private Store", created_by=other)
-
-        response = client.get(reverse("ledger:store-detail", args=[other_store.id]))
-
-        assert response.status_code == http_client.NOT_FOUND

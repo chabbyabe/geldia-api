@@ -21,6 +21,12 @@ class User(factory.django.DjangoModelFactory):
     username = factory.Sequence(lambda o: f"{fake.user_name()}{o}")
     first_name = factory.LazyAttribute(lambda o: fake.first_name())
     last_name = factory.LazyAttribute(lambda o: fake.last_name())
-    password = factory.django.Password("SamplePassword")
 
     is_superuser = False
+
+    @factory.post_generation
+    def password(self, create, extracted, **kwargs):
+        raw_password = extracted or "SamplePassword"
+        self.set_password(raw_password)
+        if create:
+            self.save(update_fields=["password"])

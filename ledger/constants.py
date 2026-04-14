@@ -38,4 +38,5 @@ class BaseFilterType:
     TRANSACTION_LOG: str = "TransactionLog"
     CATEGORY: str = "Category"
     TAG: str = "Tag"
+    PLACE: str = "Place"
 

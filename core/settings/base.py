@@ -198,7 +198,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 15,
     "DATETIME_FORMAT": "%Y-%m-%d %I:%M %p",
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),    
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",

@@ -8,11 +8,10 @@ from ledger.constants import ACTION_CHOICES
 from ledger.querysets.transactions import TransactionQuerySet
 
 class Tag(CommonInfo):
-    name = models.CharField(max_length=150)
+    name = models.CharField(max_length=150, unique=True, help_text='Groceries, Entertainment, Online')
     color = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
-        unique_together = ('created_by', 'name')
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -20,8 +19,10 @@ class Tag(CommonInfo):
     
 class Place(CommonInfo):
     name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
+    classification = models.CharField(max_length=255, help_text='Town, City, Village, Online', null=True, blank=True)
 
     class Meta:
+        unique_together = ("name", "classification")
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -29,7 +30,7 @@ class Place(CommonInfo):
 
 
 class TransactionType(CommonInfo):
-    name = models.CharField(max_length=50, help_text='Debit, Credit, Transfer (for accounts)')
+    name = models.CharField(max_length=50, help_text='Debit, Credit, Transfer (for accounts)', unique=True)
     color = models.CharField(max_length=20)
     icon = models.CharField(max_length=100)
     notes = models.CharField(max_length=300, blank=True, null=True)
@@ -56,6 +57,7 @@ class Category(CommonInfo):
     icon = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
+        unique_together = ("created_by","name")
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -63,9 +65,11 @@ class Category(CommonInfo):
     
 
 class Store(CommonInfo):
-    name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
+    name = models.CharField(max_length=255, help_text='HEMA, IKEA, Online')
+    classification = models.CharField(max_length=255, help_text='DIY, Restaurant, Supermarket, Online', null=True, blank=True)
 
     class Meta:
+        unique_together = ("name", "classification")
         ordering = ["-created_at"]
 
     def __str__(self) -> str:

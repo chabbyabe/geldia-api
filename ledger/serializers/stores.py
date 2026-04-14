@@ -7,6 +7,7 @@ from users.serializers import UserSimpleSerializer
 
 class StoreSerializer(serializers.ModelSerializer):
     created_by = UserSimpleSerializer(read_only=True)
+    updated_by = UserSimpleSerializer(read_only=True)
 
     class Meta:
         model = Store

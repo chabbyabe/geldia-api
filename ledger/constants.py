@@ -39,4 +39,5 @@ class BaseFilterType:
     CATEGORY: str = "Category"
     TAG: str = "Tag"
     PLACE: str = "Place"
+    STORE: str = "Store"
 

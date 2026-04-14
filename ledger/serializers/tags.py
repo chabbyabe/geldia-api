@@ -6,6 +6,7 @@ from users.serializers import UserSimpleSerializer
 
 class TagSerializer(serializers.ModelSerializer):
     created_by = UserSimpleSerializer(read_only=True)
+    updated_by = UserSimpleSerializer(read_only=True)
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -14,7 +15,6 @@ class TagSerializer(serializers.ModelSerializer):
 
         if user and user.is_authenticated and name:
             existing = Tag.objects.filter(
-                created_by=user,
                 name__iexact=name.strip(),
             )
 

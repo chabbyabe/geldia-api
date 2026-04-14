@@ -21,7 +21,6 @@ class StoreSerializer(serializers.ModelSerializer):
 
         if user and user.is_authenticated and name:
             existing = Store.objects.filter(
-                created_by=user,
                 name__iexact=name.strip(),
             )
 

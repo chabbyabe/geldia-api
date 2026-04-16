@@ -18,7 +18,7 @@ class Tag(CommonInfo):
         return self.name
     
 class Place(CommonInfo):
-    name = models.CharField(max_length=255, help_text='Woerden, Utrecht, Online')
+    name = models.CharField(max_length=255, unique=True, help_text='Woerden, Utrecht, Online')
     classification = models.CharField(max_length=255, help_text='Town, City, Village, Online', null=True, blank=True)
 
     class Meta:
@@ -65,7 +65,7 @@ class Category(CommonInfo):
     
 
 class Store(CommonInfo):
-    name = models.CharField(max_length=255, help_text='HEMA, IKEA, Online')
+    name = models.CharField(max_length=255, unique=True, help_text='HEMA, IKEA, Online')
     classification = models.CharField(max_length=255, help_text='DIY, Restaurant, Supermarket, Online', null=True, blank=True)
 
     class Meta:
@@ -169,7 +169,7 @@ class TransactionLog(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=["transaction", "created_at"]),
+            models.Index(fields=["transaction", "-created_at"]),
         ]
 
     def __str__(self) -> str:

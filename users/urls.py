@@ -6,8 +6,8 @@ from dj_rest_auth.views import (
     PasswordChangeView,
 )
 from rest_framework_simplejwt.views import TokenVerifyView
-from users.views import UserRegisterView
-
+from users.views import UserRegisterView, UserSettingsViewSet
+from rest_framework import routers
 urlpatterns = []
 
 dj_rest_auth_urls = [
@@ -21,6 +21,13 @@ dj_rest_auth_urls = [
 auth_urls = [
     path("auth/", include(dj_rest_auth_urls)),
     path("auth/register", UserRegisterView.as_view(), name="rest_register"),
+]
+
+router = routers.SimpleRouter()
+router.register(r'settings', UserSettingsViewSet, basename='settings')
+
+urlpatterns = [
+    path('', include(router.urls)),
 ]
 
 urlpatterns += auth_urls

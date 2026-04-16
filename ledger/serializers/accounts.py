@@ -6,6 +6,8 @@ from rest_framework import serializers
 
 from users.models import Account, User
 from users.serializers import UserSimpleSerializer
+from ledger.models import Category
+from ledger.serializers.categories import CategorySimpleSerializer
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -17,7 +19,13 @@ class AccountSerializer(serializers.ModelSerializer):
         write_only=True,
         source="shared_users"
     )
-
+    categories = CategorySimpleSerializer(many=True, read_only=True)
+    category_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        many=True,
+        write_only=True,
+        source="categories"
+    )
     has_transactions = serializers.SerializerMethodField()
     class Meta:
         model = Account
@@ -51,9 +59,10 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class AccountSimpleSerializer(serializers.ModelSerializer):
+    categories = CategorySimpleSerializer(many=True, read_only=True)
     class Meta:
         model = Account
-        fields = ["id", "name", "icon", "color", "balance", "is_default", "user_id"]
+        fields = ["id", "name", "icon", "color", "balance", "is_default", "user_id", "categories"]
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
 
      

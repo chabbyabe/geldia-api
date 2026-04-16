@@ -74,7 +74,7 @@ class CategorySimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'color', 'icon', 'transaction_type', 'parent_category']
+        fields = ['id', 'name', 'color', 'icon', 'notes', 'transaction_type', 'parent_category']
         read_only_fields = ['id']
 
     def get_parent_category(self, obj: Category) -> dict[str, Any] | None:

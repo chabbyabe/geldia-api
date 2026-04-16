@@ -10,9 +10,10 @@ class TransactionQuerySet(models.QuerySet):
     def _for_user(self, user):
         return self.filter(
             Q(created_by=user) |
-            Q(account__user=user),
+            Q(account__user=user) |
+            Q(account__shared_users=user),
             deleted_at__isnull=True,
-        )
+        ).distinct()
 
     def for_year(self, year):
         return self.filter(

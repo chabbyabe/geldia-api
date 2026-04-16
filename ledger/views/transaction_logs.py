@@ -11,6 +11,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIBaseFilterBackend
 from ledger.constants import BaseFilterType
+from django.db.models import Q
 
 json_field : str = "new_data__"
 
@@ -65,7 +66,8 @@ class TransactionLogViewSet(GenericViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return TransactionLog.objects.filter(performed_by=self.request.user)
+        return TransactionLog.objects.filter(
+            Q(transaction__account__shared_users=self.request.user) | Q(transaction__account__user=self.request.user))
 
     @action(detail=False, methods=['get'], url_path="transactions")
     def transaction_logs(self, request):

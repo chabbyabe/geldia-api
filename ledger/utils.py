@@ -24,8 +24,9 @@ def get_or_create_instance(
     if not name:
         return None
     final_defaults = defaults if defaults else {}
+    name = name.strip().title()
     instance, _ = model.objects.get_or_create(
-        name=name.strip().title(),
+        name=name,
         defaults={**final_defaults, 'created_by': user}
     )
     return instance

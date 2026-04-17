@@ -41,7 +41,7 @@ class CategorySerializer(serializers.ModelSerializer):
     
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         instance = getattr(self, "instance", None)
-        name = attrs.get("name").title()
+        name = attrs.get("name") or "".title()
         user = self.context["request"].user
         qs = self.Meta.model.objects.filter(name=name, created_by=user)
 

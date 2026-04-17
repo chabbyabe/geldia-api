@@ -37,5 +37,6 @@ class UserSettingsViewSet(ViewSet):
     def user_categories(self, request):
         categories = (
             Category.objects.filter(created_by=request.user)
+            .order_by("parent_category_id", "name")
         )
         return Response(CategorySerializer(categories, many=True).data)

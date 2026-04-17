@@ -38,9 +38,19 @@ class CategorySerializer(serializers.ModelSerializer):
                 "icon": obj.parent_category.icon,
             }
         return None
-
+    
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         instance = getattr(self, "instance", None)
+        name = attrs.get("name") or "".title()
+        user = self.context["request"].user
+        qs = self.Meta.model.objects.filter(name=name, created_by=user)
+
+        if instance:
+            qs = qs.exclude(pk=instance.pk)
+
+        if qs.exists():
+            raise serializers.ValidationError("This category name is already taken.")
+    
         parent_category = attrs.get(
             "parent_category",
             instance.parent_category if instance else None,
@@ -54,11 +64,9 @@ class CategorySerializer(serializers.ModelSerializer):
             parent_transaction_type = parent_category.transaction_type
 
             if transaction_type != parent_transaction_type:
-                raise serializers.ValidationError({
-                    "transaction_type_id": (
+                raise serializers.ValidationError(
                         "Child categories must use the same transaction type as their parent category."
                     )
-                })
 
         return attrs
 
@@ -74,7 +82,7 @@ class CategorySimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'color', 'icon', 'transaction_type', 'parent_category']
+        fields = ['id', 'name', 'color', 'icon', 'notes', 'transaction_type', 'parent_category']
         read_only_fields = ['id']
 
     def get_parent_category(self, obj: Category) -> dict[str, Any] | None:
@@ -121,7 +129,6 @@ class CategoryOverviewSerializer(serializers.ModelSerializer):
     color = serializers.CharField()
     is_parent = serializers.BooleanField()
     amount = serializers.FloatField()
-    formatted_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -131,8 +138,4 @@ class CategoryOverviewSerializer(serializers.ModelSerializer):
             "color",
             "is_parent",
             "amount",
-            "formatted_amount",
         ]
-
-    def get_formatted_amount(self, obj: dict[str, Any]) -> str:
-        return f"€{(obj['amount'] or 0):,.2f}"

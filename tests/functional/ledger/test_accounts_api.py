@@ -52,6 +52,7 @@ class TestAccountViewSet:
             format="json",
         )
 
+
         assert response.status_code == http_client.CREATED
         assert response.data["name"] == "Wallet"
         assert response.data["user"]["id"] == user.id

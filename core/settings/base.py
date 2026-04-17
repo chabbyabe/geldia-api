@@ -241,5 +241,9 @@ CORS_ALLOW_HEADERS = [
     "authorization",
 ]
 
+CSRF_TRUSTED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS", default="http://localhost:3000", cast=Csv()
+)
+
 # drf-yasg deprecation: use non-compat renderer format handling.
 SWAGGER_USE_COMPAT_RENDERERS = False

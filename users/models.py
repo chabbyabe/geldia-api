@@ -95,6 +95,7 @@ class Account(CommonInfo):
         related_name="shared_accounts",
         help_text="Users this account is shared with"
     )
+    categories = models.ManyToManyField("ledger.Category", blank=True, related_name="accounts")
 
     objects = AccountQuerySet.as_manager()
 

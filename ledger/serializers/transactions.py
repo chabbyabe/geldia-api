@@ -60,9 +60,6 @@ class TransactionSerializer(serializers.ModelSerializer):
     pair_transaction = AccountSimpleSerializer(read_only=True)
     transaction_type = TransactionTypeSimpleSerializer(read_only=True)
     tags = TagSimpleSerializer(many=True, read_only=True)
-    formatted_amount = serializers.SerializerMethodField()
-    formatted_net_amount = serializers.SerializerMethodField()
-    formatted_gross_amount = serializers.SerializerMethodField()
 
     # ID fields for writes
     user_id = serializers.PrimaryKeyRelatedField(
@@ -116,15 +113,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
 
-    def get_formatted_amount(self, obj: Transaction) -> str:
-        return f"€{(obj.amount or 0):,.2f}"
-    
-    def get_formatted_net_amount(self, obj: Transaction) -> str:
-        return f"€{(obj.net_amount or 0):,.2f}"
-    
-    def get_formatted_gross_amount(self, obj: Transaction) -> str:
-        return f"€{(obj.gross_amount or 0):,.2f}"
-    
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # Bind the callable dynamically at runtime
@@ -151,31 +139,64 @@ class TransactionSerializer(serializers.ModelSerializer):
     def _place_extra_data(self) -> dict[str, Any]:
         return {"created_by": self.context["request"].user}
     
-    def create(self, validated_data: dict[str, Any]) -> Transaction:
-        # Pop the virtual fields
+    def _extract_related_data(self, validated_data):
+        return {
+            "category": validated_data.pop("category_name", None),
+            "store": validated_data.pop("store_name", None),
+            "place": validated_data.pop("place_name", None),
+            "tags": validated_data.pop("tags_names", None),
+        }
 
-        category = validated_data.pop("category_name", None)
-        store = validated_data.pop("store_name", None)
-        place = validated_data.pop("place_name", None)
-        tags = validated_data.pop("tags_names", None)
-        # Create the Transaction instance normally
-        transaction = Transaction.objects.create(**validated_data)
-        # Assign the popped related objects
-        if category:
-            transaction.category = category
-        if store:
-            transaction.store = store
-        if place:
-            transaction.place = place
+    def _assign_related_fields(self, transaction, related_data):
+        if related_data["category"] is not None:
+            transaction.category = related_data["category"]
 
-        if tags is not None:
+        if related_data["store"]:
+            transaction.store = related_data["store"]
+        else: 
+            transaction.store = None
+
+        if related_data["place"]:
+            transaction.place = related_data["place"]
+        else:
+            transaction.place = None
+
+        if related_data["tags"] is not None:
             tag_ids = []
-            for name in tags:
-                tag = get_or_create_instance(Tag, name, self.context["request"].user)
-                if tag is not None:
+            for name in related_data["tags"]:
+                tag = get_or_create_instance(
+                    Tag,
+                    name,
+                    self.context["request"].user
+                )
+                if tag:
                     tag_ids.append(tag.id)
-    
+
             transaction.tags.set(tag_ids)
 
         transaction.save()
         return transaction
+
+    def create(self, validated_data):
+        related_data = self._extract_related_data(validated_data)
+        transaction = Transaction.objects.create(**validated_data)
+        return self._assign_related_fields(transaction, related_data)
+
+    def update(self, instance, validated_data):
+        related_data = self._extract_related_data(validated_data)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return self._assign_related_fields(instance, related_data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Safely remove nested account.categories
+        account = data.get("account")
+        if isinstance(account, dict):
+            account.pop("categories", None)
+
+        return data

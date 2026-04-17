@@ -269,8 +269,6 @@ class TestDashboardViewSet:
         assert by_name[TxnType.INCOME]["amount"] == "3000.00"
         assert by_name[TxnType.EXPENSES]["amount"] == "500.00"
         assert by_name["Savings"]["amount"] == "1234.56"
-        assert by_name[TxnType.INCOME]["formatted_amount"] == "€3,000.00"
-        assert by_name[TxnType.EXPENSES]["formatted_amount"] == "€500.00"
 
     def test_summary_overview_requires_authentication(self, client):
         response = client.get(reverse("ledger:dashboard-summary-overview"))

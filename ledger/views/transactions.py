@@ -25,6 +25,7 @@ from ledger.constants import TxnType, UserAction, BaseFilterType
 from rest_framework import serializers
 from django.utils import timezone
 from ledger.utils import get_or_create_instance, clear_validated_keys, serialize_for_json
+from django.shortcuts import get_object_or_404
 
 def log_transaction(instance : any, action: str, created: bool = False, **kwargs):
     """
@@ -37,20 +38,25 @@ def log_transaction(instance : any, action: str, created: bool = False, **kwargs
     """
     from ledger.serializers.transactions import TransactionSerializer
 
-    # Get the latest instance from DB
-    current_instance = Transaction.objects.get(pk=instance.pk)
-    new_data = serialize_for_json(TransactionSerializer(current_instance).data)
-
-    # Determine old_data for update or delete actions
+    new_data = serialize_for_json(TransactionSerializer(instance).data)
+    
+    performed_by = None
     old_data = None
+
     if action in [UserAction.UPDATE, UserAction.DELETE]:
         old_data = (
             TransactionLog.objects
-                .order_by('-created_at') 
-                .values_list('new_data', flat=True) 
-                .filter(transaction=instance.pk)
-                .first()
+            .filter(transaction=instance.pk)
+            .order_by('-created_at')
+            .values_list('new_data', flat=True)
+            .first()
         )
+        performed_by = (
+            instance.updated_by if action == UserAction.UPDATE
+            else instance.deleted_by
+        )
+    else:
+        performed_by = instance.created_by
 
     # Create the transaction log
     TransactionLog.objects.create(
@@ -58,7 +64,7 @@ def log_transaction(instance : any, action: str, created: bool = False, **kwargs
         action=action if not created else UserAction.CREATE,
         old_data=old_data,
         new_data=new_data,
-        performed_by=instance.user
+        performed_by=performed_by
     )
 
 class TransactionFilterBackend(MUIBaseFilterBackend):
@@ -169,9 +175,17 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
         with transaction.atomic():
             store_instance = get_or_create_instance(Store, data.get("store"), user)
             place_instance = get_or_create_instance(Place, data.get("place"), user)
-            category_instance = get_or_create_instance(Category, data.get("category"), user, {
-                "transaction_type": transaction_type
-            })
+            # category_instance = get_object_or_404(Category, pk=data.get("category"))
+
+            account = get_object_or_404(Account, pk=account_id)
+            if 'category' in data and data.get("category") != None:
+                category_instance = get_or_create_instance(
+                    Category, data.get("category"), user, {
+                        "transaction_type": transaction_type,
+                    }) if data.get("category") else instance.category
+                account.categories.add(category_instance)
+            else:
+                category_instance = None
 
             if transaction_type_name == TxnType.INCOME:
                 net_amount = Decimal(data.get("net_amount", 0) or 0)
@@ -281,11 +295,13 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             else:
                 place_instance = None
 
+            account = get_object_or_404(Account, pk=account_id)
             if 'category' in data and data.get("category") != None:
                 category_instance = get_or_create_instance(
                     Category, data.get("category"), user, {
-                        "transaction_type": transaction_type
+                        "transaction_type": transaction_type,
                     }) if data.get("category") else instance.category
+                account.categories.add(category_instance)
             else:
                 category_instance = None
 
@@ -449,16 +465,22 @@ class GetInitialTransactionDataView(APIView):
     def get(self, request):
         user = request.user
         # Fetch the user's data
-        accounts = Account.objects.visible_to(user).distinct().order_by('-is_default', '-created_at')
-        main_categories = Category.objects.filter(created_by=user)
-        tags = Tag.objects.filter(created_by=user)
-        stores = Store.objects.filter(created_by=user)
-        places = Place.objects.filter(created_by=user)
+        accounts = (Account.objects.visible_to(user)
+                    .distinct()
+                    .order_by('-is_default', '-created_at')
+                    .prefetch_related("categories")
+                    )
+        categories = Category.objects.filter(
+                        accounts__in=accounts
+                    ).distinct()
+        tags = Tag.objects.all()
+        stores = Store.objects.all()
+        places = Place.objects.all()
 
         # Serialize the data
         data = {
             "accounts": AccountSimpleSerializer(accounts, many=True).data,
-            "categories": CategorySimpleSerializer(main_categories, many=True).data,
+            "categories": CategorySimpleSerializer(categories, many=True).data,
             "tags": TagSimpleSerializer(tags, many=True).data,
             "stores": StoreSimpleSerializer(stores, many=True).data,
             "places": PlaceSimpleSerializer(places, many=True).data,

@@ -57,6 +57,7 @@ class TestCategoryViewSet:
                 "name": "Snacks",
                 "color": None,
                 "icon": None,
+                "notes": None,
                 "transaction_type": {
                     "id": expense_type.id,  
                     "name": expense_type.name,
@@ -167,7 +168,7 @@ class TestCategoryViewSet:
 
         assert response.status_code == http_client.BAD_REQUEST
         assert response.data == {
-            "transaction_type_id": [
+            "non_field_errors": [
                 "Child categories must use the same transaction type as their parent category."
             ]
         }

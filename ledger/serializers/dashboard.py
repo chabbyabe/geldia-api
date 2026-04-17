@@ -11,10 +11,6 @@ class SummaryOverviewSerializer(serializers.Serializer):
     icon = serializers.CharField()
     color = serializers.CharField()
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    formatted_amount = serializers.SerializerMethodField()
-
-    def get_formatted_amount(self, obj: dict[str, Any]) -> str:
-        return f"€{(obj['amount'] or 0):,.2f}"
     
 class YearOverviewQuerySerializer(serializers.Serializer):
     year = serializers.IntegerField(required=False)

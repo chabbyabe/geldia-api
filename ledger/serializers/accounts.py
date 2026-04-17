@@ -17,14 +17,16 @@ class AccountSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(),
         many=True,
         write_only=True,
-        source="shared_users"
+        source="shared_users",
+        required=False,
     )
     categories = CategorySimpleSerializer(many=True, read_only=True)
     category_ids = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         many=True,
         write_only=True,
-        source="categories"
+        source="categories",
+        required=False,
     )
     has_transactions = serializers.SerializerMethodField()
     class Meta:

@@ -121,7 +121,6 @@ class CategoryOverviewSerializer(serializers.ModelSerializer):
     color = serializers.CharField()
     is_parent = serializers.BooleanField()
     amount = serializers.FloatField()
-    formatted_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -131,8 +130,4 @@ class CategoryOverviewSerializer(serializers.ModelSerializer):
             "color",
             "is_parent",
             "amount",
-            "formatted_amount",
         ]
-
-    def get_formatted_amount(self, obj: dict[str, Any]) -> str:
-        return f"€{(obj['amount'] or 0):,.2f}"

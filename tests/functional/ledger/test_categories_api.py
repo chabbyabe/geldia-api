@@ -57,6 +57,7 @@ class TestCategoryViewSet:
                 "name": "Snacks",
                 "color": None,
                 "icon": None,
+                "notes": None,
                 "transaction_type": {
                     "id": expense_type.id,  
                     "name": expense_type.name,

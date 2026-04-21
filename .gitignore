@@ -174,3 +174,4 @@ core/static
 # End of https://www.gitignore.io/api/python,vagrant
 eb-package.zip
 static/
+staticfiles/

@@ -138,21 +138,13 @@ class Command(BaseCommand):
 
         now = timezone.now()
 
-        objects = [
-            Tag(
+        for item in data:
+            Tag.objects.update_or_create(
                 name=item,
-                color="#006CD1",
-                created_at=now,
+                defaults={
+                    "color": "#006CD1",
+                    "created_at": now,
+                }
             )
-            for item in data
-        ]
-
-        Tag.objects.bulk_create(
-            objects,
-            update_conflicts=True,
-            unique_fields=["name"],
-            update_fields=["color"],
-            batch_size=1000
-        )
 
         self.stdout.write(self.style.SUCCESS("Tags imported successfully"))

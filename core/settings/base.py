@@ -44,13 +44,6 @@ SECRET_KEY = config(
     default="django-insecure-&3!=grsf-$9vpp-*(3!vlnpz%3!cjt#t17ex-8ist+zd^mk&h0",
 )
 
-# SIMPLE_JWT uses HMAC (HS256) by default and expects a signing key
-# with at least 32 bytes to avoid insecure-key warnings.
-_JWT_SIGNING_KEY = config("JWT_SIGNING_KEY", default=SECRET_KEY)
-if len(_JWT_SIGNING_KEY.encode("utf-8")) < 32:
-    # Derive a deterministic 64-char key from any short secret.
-    _JWT_SIGNING_KEY = hashlib.sha256(_JWT_SIGNING_KEY.encode("utf-8")).hexdigest()
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -218,7 +211,7 @@ REST_AUTH = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "SIGNING_KEY": _JWT_SIGNING_KEY,
+    "SIGNING_KEY": SECRET_KEY,
 }
 
 # CORS Headers	# CORS Headers

@@ -17,7 +17,7 @@ json_field : str = "new_data__"
 
 class TransactionLogFilterBackend(MUIBaseFilterBackend):
     date_field = "created_at"
-    empty_string_fields = ["some_text_field"]
+    empty_string_fields = ["note"]
     filter_type = BaseFilterType.TRANSACTION_LOG
     json_field = "new_data"
 
@@ -67,7 +67,7 @@ class TransactionLogViewSet(GenericViewSet):
 
     def get_queryset(self):
         return TransactionLog.objects.filter(
-            Q(transaction__account__shared_users=self.request.user) | Q(transaction__account__user=self.request.user))
+            Q(transaction__account__shared_users=self.request.user) | Q(transaction__account__user=self.request.user) | Q(performed_by=self.request.user))
 
     @action(detail=False, methods=['get'], url_path="transactions")
     def transaction_logs(self, request):

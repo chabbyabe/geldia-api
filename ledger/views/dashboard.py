@@ -78,6 +78,7 @@ class DashboardViewSet(ViewSet):
                 .visible_to(request.user)
                 .filter_by_transaction_type(income_name)
                 .filter_by_date_range(start_date, end_date)
+                .exclude(account__name="Savings")
                 .aggregate(net_amount=Sum('net_amount'))
                 .get('net_amount') or 0
         )

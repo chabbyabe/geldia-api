@@ -14,6 +14,13 @@ TModel = TypeVar("TModel", bound=Model)
 JSONScalar = str | int | float | bool | None
 JSONValue = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
 
+def smart_title(name: str) -> str:
+    words = name.strip().split()
+
+    return " ".join(
+        word if not word.islower() else word.title()
+        for word in words
+    )
 
 def get_or_create_instance(
     model: type[TModel],
@@ -23,14 +30,23 @@ def get_or_create_instance(
 ) -> TModel | None:
     if not name:
         return None
-    final_defaults = defaults if defaults else {}
-    name = name.strip().title()
-    instance, _ = model.objects.get_or_create(
-        name=name,
-        defaults={**final_defaults, 'created_by': user}
-    )
-    return instance
 
+    final_defaults = defaults or {}
+
+    lookup = {
+        "name": smart_title(name),
+    }
+
+    instance = model.objects.filter(**lookup).first()
+
+    if instance:
+        return instance
+
+    return model.objects.create(
+        **lookup,
+        **final_defaults,
+        created_by=user,
+    )
 
 def clear_validated_keys(
     validated_data: dict[str, Any],

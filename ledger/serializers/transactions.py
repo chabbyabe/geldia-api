@@ -32,23 +32,36 @@ class CreateIfNotExistsRelatedField(serializers.PrimaryKeyRelatedField):
         super().__init__(queryset=queryset, **kwargs)
 
     def to_internal_value(self, data: Any) -> Any:
-        # Existing PK
-        if isinstance(data, int):
-            return super().to_internal_value(data)
-
-        # String -> get_or_create
+        
         if isinstance(data, str):
-            lookup = {self.slug_field: data}
             defaults = {}
-            # If extra_create_data is callable, call it with the serializer context
+
             if callable(self.extra_create_data):
                 defaults = self.extra_create_data()
             elif isinstance(self.extra_create_data, dict):
                 defaults = self.extra_create_data
 
-            obj, _ = self.queryset.get_or_create(defaults=defaults, **lookup)
-            return obj
+            # First try system-created record
+            obj = self.queryset.filter(
+                **{self.slug_field: data},
+                created_by__id__isnull=True
+            ).first()
 
+            # If not found, try any existing record
+            if not obj:
+                obj = self.queryset.filter(
+                    **{self.slug_field: data}
+                ).first()
+
+            # If still not found, create new
+            if not obj:
+                obj = self.queryset.create(
+                    **{self.slug_field: data},
+                    **defaults
+                )
+
+            return obj
+        
         raise serializers.ValidationError(f"Invalid value for {self.slug_field}")
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -124,7 +137,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         transaction_type_id = self.initial_data.get("transaction_type_id")
         if not transaction_type_id:
             raise serializers.ValidationError("transaction_type_id is required to create category")
-        
+
         # Convert ID to instance
         try:
             transaction_type = TransactionType.objects.get(id=transaction_type_id)

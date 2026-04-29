@@ -175,8 +175,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
         with transaction.atomic():
             store_instance = get_or_create_instance(Store, data.get("store"), user)
             place_instance = get_or_create_instance(Place, data.get("place"), user)
-            # category_instance = get_object_or_404(Category, pk=data.get("category"))
-
+            
             account = get_object_or_404(Account, pk=account_id)
             if 'category' in data and data.get("category") != None:
                 category_instance = get_or_create_instance(

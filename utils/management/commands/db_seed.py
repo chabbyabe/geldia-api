@@ -14,6 +14,7 @@ from tests.factories.ledger.transaction_type import (
     IncomeTransactionType,
     TransferTransactionType,
 )
+from ledger.utils import smart_title
 
 User = get_user_model()
 
@@ -111,7 +112,7 @@ class Command(BaseCommand):
         for row in table_data:
             source_category_id = int(row["id"])
             defaults = {
-                "name": row["name"],
+                "name": smart_title(row["name"]),
                 "notes": row.get("notes"),
                 "color": row.get("color"),
                 "icon": row.get("icon"),
@@ -121,7 +122,7 @@ class Command(BaseCommand):
 
             category = Category.all_objects.filter(
                 created_by_id=created_by_id,
-                name=row["name"],
+                name=smart_title(row["name"]),
             ).first()
 
             if category is None:
@@ -170,7 +171,7 @@ class Command(BaseCommand):
 
         objects = [
             Place(
-                name=item["name"],
+                name=item["name"].title(),
                 classification=item["classification"],
             )
             for item in data
@@ -202,7 +203,7 @@ class Command(BaseCommand):
 
         objects = [
             Store(
-                name=item["name"],
+                name=smart_title(item["name"]),
                 classification=item["classification"],
                 created_at=timezone.now(),
             )
@@ -237,7 +238,7 @@ class Command(BaseCommand):
 
         for item in data:
             Tag.objects.update_or_create(
-                name=item,
+                name=smart_title(item),
                 defaults={
                     "color": "#006CD1",
                     "created_at": now,

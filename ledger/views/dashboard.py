@@ -2,13 +2,14 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import F, Sum
+from django.db.models import Q, Sum
+from django.db.models.functions import TruncMonth
 import calendar
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 from ledger.constants import DateRange, TxnType
-from ledger.models import Transaction, TransactionType
+from ledger.models import Transaction
 from ledger.serializers.categories import CategoryOverviewSerializer
 from ledger.serializers.dashboard import SummaryOverviewSerializer, YearOverviewQuerySerializer
 from ledger.serializers.transactions import TransactionSerializer
@@ -25,7 +26,7 @@ class DashboardViewSet(ViewSet):
             .visible_to(request.user)
             .order_by('-created_at')[:5]
         )
-        return Response(TransactionSerializer(transactions, many=True).data)
+        return Response(TransactionSerializer(transactions, many=True).data, status=status.HTTP_200_OK)
 
 
     @action(detail=False, methods=['get'], url_path="category-overview")
@@ -60,69 +61,70 @@ class DashboardViewSet(ViewSet):
 
         serializer = CategoryOverviewSerializer(data, many=True)
 
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-    @action(detail=False, methods=['get'], url_path="summary-overview")
+    @action(detail=False, methods=["get"], url_path="summary-overview")
     def summary_overview(self, request):
-        income_name = TxnType.INCOME
-        expenses_name = TxnType.EXPENSES
-
         start_date, end_date = get_date_range(request, filter_type=DateRange.YEAR)
-        
-        types = TransactionType.objects.filter(name__in=[income_name, expenses_name])
-        type_map = {t.name: t for t in types}
+
+        base_txn_qs = (
+            Transaction.objects
+            .visible_to(request.user)
+            .filter_by_date_range(start_date, end_date)
+            .exclude(category__name="Savings")
+        )
 
         income_total = (
-            Transaction.objects
-                .visible_to(request.user)
-                .filter_by_transaction_type(income_name)
-                .filter_by_date_range(start_date, end_date)
-                .exclude(account__name="Savings")
-                .aggregate(net_amount=Sum('net_amount'))
-                .get('net_amount') or 0
-        )
-        
-        expenses_total = (
-            Transaction.objects
-                .visible_to(request.user)
-                .filter_by_transaction_type(expenses_name)
-                .filter_by_date_range(start_date, end_date)
-                .aggregate(amount=Sum('amount'))
-                .get('amount') or 0
+            base_txn_qs
+            .filter_by_transaction_type(TxnType.INCOME)
+            .aggregate(total=Sum("net_amount"))["total"]
+            or 0
         )
 
-        # Get account that has `Savings` name to show balance
+        expenses_total = (
+            base_txn_qs
+            .filter_by_transaction_type(TxnType.EXPENSES)
+            .aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
+
         savings_balance = (
             Account.objects
-                .visible_to(request.user)
-                .filter(name="Savings")
-                .aggregate(balance=Sum('balance')
+            .visible_to(request.user)
+            .filter(
+                Q(name__iexact="Savings") |
+                Q(categories__name="Savings")
             )
+            .distinct()
+            .aggregate(balance=Sum("balance"))["balance"]
+            or 0
         )
 
-        summary_overview = [
-            SummaryOverviewSerializer({
-                "name": type_map[income_name].name,
-                "icon": type_map[income_name].icon,
-                "color": type_map[income_name].color,
-                "amount": income_total
-            }).data,
-            SummaryOverviewSerializer({
-                "name": type_map[expenses_name].name,
-                "icon": type_map[expenses_name].icon,
-                "color": type_map[expenses_name].color,
-                "amount": expenses_total
-            }).data,
-            SummaryOverviewSerializer({
+        summary_overview : list = [
+            {
+                "name": TxnType.INCOME,
+                "icon": "Savings", 
+                "color": "#006CD1",        
+                "amount": income_total,
+            },
+            {
+                "name": TxnType.EXPENSES,
+                "icon": "Payments",
+                "color": "#E5484D",
+                "amount": expenses_total,
+            },
+            {
                 "name": "Savings",
                 "icon": "Balance",
                 "color": "#F5A524",
-                "amount": savings_balance["balance"]
-            }).data,
+                "amount": savings_balance,
+            },
         ]
-    
-        return Response(summary_overview)
+
+        serializer = SummaryOverviewSerializer(summary_overview, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
     @action(detail=False, methods=['get'], url_path="year-overview")
@@ -140,25 +142,42 @@ class DashboardViewSet(ViewSet):
         income_net_data = [0] * 12
         income_gross_data = [0] * 12
         expense_data = [0] * 12
-
         try:
-            qs = (
+            income_rows = (
                 Transaction.objects
-                    .visible_to(request.user)
-                    .for_year(year)
-                    .with_transaction_date()
-                    .values("transaction_date", type=F("transaction_type__name"))
-                    .with_amount_totals()
-                    .order_by("transaction_date", "type")
+                .visible_to(request.user)
+                .filter_by_transaction_type(TxnType.INCOME)
+                .with_transaction_date()
+                .for_year(year)
+                .filter(gross_amount__isnull=False)
+                .annotate(month=TruncMonth("transaction_date"))
+                .values("month")
+                .annotate(
+                    net_amount_total=Sum("net_amount"),
+                    gross_amount_total=Sum("gross_amount"),
+                )
+                .order_by("month")
+            )
+            expenses_rows = (
+                Transaction.objects
+                .visible_to(request.user)
+                .filter_by_transaction_type(TxnType.EXPENSES)
+                .with_transaction_date()
+                .for_year(year)
+                .annotate(month=TruncMonth("transaction_date"))
+                .values("month")
+                .annotate(expenses_amount_total=Sum("amount"))
+                .order_by("month")
             )
 
-            for row in qs:
-                index = row["transaction_date"].month - 1
-                if row["type"] == income_name:
-                    income_net_data[index] = float(row["net_amount_total"] or 0)
-                    income_gross_data[index] = float(row["gross_amount_total"] or 0)
-                else:
-                    expense_data[index] = float(row["expenses_amount_total"] or 0)
+            for row in income_rows:
+                index = row["month"].month - 1
+                income_net_data[index] = float(row["net_amount_total"] or 0)
+                income_gross_data[index] = float(row["gross_amount_total"] or 0)
+
+            for row in expenses_rows:
+                index = row["month"].month - 1
+                expense_data[index] = float(row["expenses_amount_total"] or 0)
 
         except Exception:
             raise ValidationError({"error":"Failed to fetch year overview"})

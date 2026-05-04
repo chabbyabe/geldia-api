@@ -31,7 +31,9 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
-
+        extra_kwargs = {
+            "name": {"validators": []}
+        }
 
 class TagSimpleSerializer(serializers.ModelSerializer):
     class Meta:

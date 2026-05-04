@@ -13,6 +13,9 @@ class PlaceSerializer(serializers.ModelSerializer):
         model = Place
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
+        extra_kwargs = {
+            "name": {"validators": []}
+        }
 
     def validate(self, attrs):
         request = self.context.get("request")

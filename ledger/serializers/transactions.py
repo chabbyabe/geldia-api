@@ -14,6 +14,7 @@ from ledger.serializers.transaction_types import TransactionTypeSimpleSerializer
 from ledger.utils import get_or_create_instance
 from users.models import Account, User
 from users.serializers import UserSimpleSerializer
+from rest_framework.exceptions import ValidationError
 
 
 class CreateIfNotExistsRelatedField(serializers.PrimaryKeyRelatedField):
@@ -81,7 +82,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         source="user"
     )
     account_id = serializers.PrimaryKeyRelatedField(
-        queryset=Account.objects.all(), 
+        queryset=Account.objects.filter(deleted_at__isnull=True), 
         write_only=True, 
         source="account"
     )
@@ -99,7 +100,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     store_name = CreateIfNotExistsRelatedField(
-        queryset=Store.objects.all(), 
+        queryset=Store.objects.filter(deleted_at__isnull=True), 
         slug_field="name",
         write_only=True,
         extra_create_data=lambda: None,
@@ -108,7 +109,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     )
     place_name = CreateIfNotExistsRelatedField(
-        queryset=Place.objects.all(),
+        queryset=Place.objects.filter(deleted_at__isnull=True),
         slug_field="name",
         write_only=True,
         extra_create_data=lambda: None,
@@ -189,6 +190,25 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         transaction.save()
         return transaction
+    
+    def _user_can_access_account(self, account, user):
+        return account.user_id == user.id or account.shared_users.filter(pk=user.pk).exists()
+       
+    def validate_account_id(self, value):
+        user = self.context["request"].user
+        # User can only access own account and accounts shared with them
+        if not self._user_can_access_account(value, user):
+            raise ValidationError("Invalid account(s)")
+        return value
+        
+    def validate(self, attrs):
+        account = attrs.get("account")
+        pair_account = attrs.get("pair_transaction")
+
+        if account and pair_account and account.pk == pair_account.pk:
+            raise ValidationError("Cannot transfer to same account")
+
+        return attrs
 
     def create(self, validated_data):
         related_data = self._extract_related_data(validated_data)

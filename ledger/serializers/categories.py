@@ -49,7 +49,8 @@ class CategorySerializer(serializers.ModelSerializer):
             qs = qs.exclude(pk=instance.pk)
 
         if qs.exists():
-            raise serializers.ValidationError("This category name is already taken.")
+                raise serializers.ValidationError("Category already exists.")
+
     
         parent_category = attrs.get(
             "parent_category",
@@ -74,7 +75,9 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
-
+        extra_kwargs = {
+            "name": {"validators": []}
+        }
 
 class CategorySimpleSerializer(serializers.ModelSerializer):
     transaction_type = TransactionTypeSimpleSerializer(read_only=True)

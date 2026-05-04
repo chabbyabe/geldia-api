@@ -13,7 +13,10 @@ class StoreSerializer(serializers.ModelSerializer):
         model = Store
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
-
+        extra_kwargs = {
+            "name": {"validators": []}
+        }
+        
     def validate(self, attrs):
         request = self.context.get("request")
         user = getattr(request, "user", None)

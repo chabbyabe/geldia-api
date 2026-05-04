@@ -13,23 +13,39 @@ jobs:
     environment: prod
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check AUTO_DEPLOY flag
+        id: gate
+        run: |
+          if [ "${{ secrets.AUTO_DEPLOY }}" = "true" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop workflow if deployment is disabled
+        if: steps.gate.outputs.deploy != 'true'
+        run: |
+          echo "🚫 AUTO_DEPLOY is not enabled. Exiting safely."
+          exit 0
 
       - name: Set up Python
+        if: steps.gate.outputs.deploy == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install Poetry
+        if: steps.gate.outputs.deploy == 'true'
         run: |
           pip install poetry
 
       # 🚀 Deploy via SSH
       - name: Deploy to server
+        if: steps.gate.outputs.deploy == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |

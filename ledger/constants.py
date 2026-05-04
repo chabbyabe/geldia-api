@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 @dataclass(frozen=True)
 class TxnType:
@@ -41,3 +42,179 @@ class BaseFilterType:
     PLACE: str = "Place"
     STORE: str = "Store"
 
+# Transaction Import
+IMPORT_TXN_HEADER_ALIASES: dict[str, str] = {
+    # date
+    "datum": "date",
+    "date": "date",
+
+    # name
+    "naam / omschrijving": "name",
+    "naam/omschrijving": "name",
+    "naam": "name",
+    "omschrijving": "name",
+    "name / description": "name",
+    "name/description": "name",
+    "name": "name",
+    "description": "name",
+
+    # account
+    "rekening": "account_number",
+    "account": "account_number",
+
+    # counterparty
+    "tegenrekening": "counterparty_account",
+    "counterparty": "counterparty_account",
+    "counterparty account": "counterparty_account",
+
+    # code
+    "code": "code",
+
+    # transfer_type
+    "af bij": "transfer_type",
+    "af/bij": "transfer_type",
+    "debit/credit": "transfer_type",
+
+    # amount
+    "bedrag (eur)": "amount",
+    "bedrag": "amount",
+    "amount": "amount",
+    "amount (eur)": "amount",
+
+    # transaction type
+    "mutatiesoort": "payment_type",
+    "transaction type": "payment_type",
+
+    # notes
+    "mededelingen": "notes",
+    "notifications": "notes",
+    "notes": "notes",
+
+    # balance after
+    "saldo na mutatie": "balance_after",
+    "resulting balance": "balance_after",
+    "balance after": "balance_after",
+
+    "tag": "tag",
+}
+
+TXN_PAYMENT_CODES: dict[str, str] = {
+    "BA": "Payment Terminal",   # Betaalautomaat
+    "IC": "Direct Debit",       # Incasso
+    "OV": "Transfer",           # Overschrijving
+    "GT": "Online Banking",     # Online bankieren (Manual Transfer)
+    "IW": "iDEAL | Wero",       # iDEAL | Wero (In-store withdrawal)
+    "ID": "iDEAL",              # iDEAL
+    "DV": "Various",            # Diversen
+    "VZ": "Batch Payment",      # Verzamelbetaling
+    "GM": "Cash Withdrawal",    # Geldautomaat"
+    "MA": "Machtiging",         # Machtiging
+}
+
+IMPORT_TXN_CATEGORIES: dict[str, str] = {
+    # utilities / housing
+    "vitens": "Water",
+    "energie": "Electricity & Gas",
+    "oxxio": "Electricity & Gas",
+    "vimexx": "Internet",
+    "fiber": "Internet",
+    "simpel": "Mobile",
+    "kpn": "Mobile",
+    "ssh": "Rent",
+    "huur": "Rent",
+    "oranje": "Savings",
+    "notprovided": "Savings",
+    "transip": "Internet",
+
+    # insurance / government
+    "infomedics": "Health Insurance",
+    "de christelijke zorg": "Health Insurance",
+    "salary": "Salary",
+    "salaries": "Salary",
+    "ned org": "Salary",
+    "living image": "Salary",
+    "driessen": "Salary",
+    "kosten oranjepakket": "Subscriptions",
+    "voorshot": "Allowance",
+    "teruggaaf": "Allowance",
+    "belastingdienst": "Allowance",
+
+    # groceries
+    "kruidvat": "Groceries",
+    "hema": "Groceries",
+    "jumbo": "Groceries",
+    "lidl": "Groceries",
+    "albert": "Groceries",
+    "amazing oriental": "Groceries",
+    "plus": "Groceries",
+    "aldi": "Groceries",
+    "edeka": "Groceries",
+    "spar": "Groceries",
+    "alber heijn": "Groceries",
+    "ekoplaza": "Groceries",
+
+    # care
+    "alvarado cuts": "Care",
+
+    # eating out
+    "manneken": "Eat Out",
+    "backwerk": "Eat Out",
+    "dapp": "Eat Out",
+    "mcd": "Eat Out",
+    "mcdonalds": "Eat Out",
+    "umaimon": "Eat Out",
+    "barista": "Eat Out",
+    "www.itoshii.nl": "Eat Out",
+    "zettle*barista": "Eat Out",
+
+    # entertainment
+    "netflix": "Entertainment",
+    "prime video": "Entertainment",
+    "hbo": "Entertainment",
+    "disney": "Entertainment",
+    "disney plus": "Entertainment",
+
+    # electronics
+    "sony": "Electronics",
+    "samsung": "Electronics",
+    "apple": "Electronics",
+    "google": "Electronics",
+    "huawei": "Electronics",
+    "xiaomi": "Electronics",
+
+    # clothing
+    "zara": "Clothing",
+    "h&m": "Clothing",
+    "nike": "Clothing",
+    "adidas": "Clothing",
+    "asics": "Clothing",
+    "reebok": "Clothing",
+    "puma": "Clothing",
+    "umbro": "Clothing",
+    "lacoste": "Clothing",
+    "vans": "Clothing",
+    "converse": "Clothing",
+    "zeeman": "Clothing",
+    "c&a": "Clothing",
+
+    # furniture / home
+    "ikea": "Furnitures",
+
+    # transport
+    "ns groep": "Transportation",
+    "ov chipkaart": "Transportation",
+
+    # hardware
+    "praxis": "Hardware",
+    "bck*praxis": "Hardware",
+    "solow": "Hardware",
+    "intratuin": "Hardware",
+
+    # gifts / misc retail
+    "pay.nl*lindt": "Gift",
+    "cycleman": "Others",
+    "word international": "Tithes",
+}
+PAYMENT_TYPES_LOOKUP = {"BA"}
+TAGS_LOOKUP = {}
+CREDIT_TRANSFER_LOOKUP = {"bij", "Bij", "Credit", "credit"}

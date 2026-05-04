@@ -1,4 +1,3 @@
-from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from core.pagination import CustomPageNumberPagination
@@ -22,10 +21,26 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from ledger.constants import TxnType, UserAction, BaseFilterType
-from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
-from ledger.utils import get_or_create_instance, clear_validated_keys, serialize_for_json
+from ledger.utils import (
+    get_or_create_instance,
+    clear_validated_keys,
+    parse_transaction_import_file,
+    serialize_for_json,
+    smart_title
+)
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from ledger.constants import IMPORT_TXN_CATEGORIES, PAYMENT_TYPES_LOOKUP
+from typing import Optional
+from difflib import SequenceMatcher
+
+try:
+    from rapidfuzz import fuzz
+except ModuleNotFoundError:  # pragma: no cover - exercised only when optional dep is missing
+    fuzz = None
 
 def log_transaction(instance : any, action: str, created: bool = False, **kwargs):
     """
@@ -71,6 +86,211 @@ class TransactionFilterBackend(MUIBaseFilterBackend):
     date_field = "transaction_at"
     empty_string_fields = ["name", "notes", "store__name", "place__name"]
     filter_type = BaseFilterType.TRANSACTION
+
+def _clean_name(name: str):
+    return name.replace("NLD", "").strip()
+
+def _get_first_word(value: str) -> str | None:
+    parts = value.split()
+    return smart_title(" ".join(parts[:1])) if parts else None
+
+def _get_last_word(value: str) -> str | None:
+    parts = value.split()
+    return parts[-1].title() if parts else None
+
+def build_import_notes(row):
+    note_parts = [row.get("notes", "")]
+
+    if row.get("payment_type"):
+        note_parts.append(f"Payment Type: {row['payment_type']}")
+    if row.get("code"):
+        note_parts.append(f"Code: {row['code']}")
+
+    return " | ".join(part for part in note_parts if part)[:500] or None
+
+def build_import_place(row):
+    code = row.get("code")
+    if code not in PAYMENT_TYPES_LOOKUP:
+        return None
+    name = _clean_name(row.get("name", ""))
+    return _get_last_word(name)
+
+
+def build_import_store(row):
+    code = row.get("code")
+    if code not in PAYMENT_TYPES_LOOKUP:
+        return None
+
+    name = _clean_name(row.get("name", ""))
+
+    store = _get_first_word(name)
+    place = _get_last_word(name)
+
+    if place and store:
+        store = store.replace(place, "").strip()
+
+    return store
+    
+
+def normalize_text(text: str) -> str:
+    text = (text or "").lower()
+    words = text.split()
+    return " ".join(words[:3])
+
+def match_import_category(text: str, lookup: dict[str, str]) -> Optional[str]:
+    text = normalize_text(text)
+
+    best_match = None
+    best_score = 0
+
+    for key, value in lookup.items():
+        key_norm = normalize_text(key)
+
+        if fuzz is not None:
+            score = fuzz.partial_ratio(text, key_norm)
+        else:
+            score = int(SequenceMatcher(None, text, key_norm).ratio() * 100)
+
+        if score > best_score:
+            best_score = score
+            best_match = value
+
+    # tune threshold if needed
+    return best_match if best_score >= 90 else None
+
+
+def build_import_category(row: dict) -> str:
+    name = row.get("name") or ""
+    payment_type = (row.get("payment_type") or "").lower()
+    code = (row.get("code") or "").strip()
+
+    if code == "OV" and payment_type == "transfer":
+        return "Savings"
+    
+    category = match_import_category(name, IMPORT_TXN_CATEGORIES)
+
+    if category:
+        return category
+
+    return "Others"
+
+
+def import_transaction_exists(*, user, account_id: int, row: dict[str, object]) -> bool:
+    transaction_type_name = row["transaction_type_name"]
+    amount = row["amount"]
+    transaction_at = row["transaction_at"]
+    name = row["name"]
+
+    queryset = Transaction.objects.visible_to(user).filter(
+        account_id=account_id,
+        transaction_type__name=transaction_type_name,
+        name=name,
+        transaction_at=transaction_at,
+    )
+
+    if transaction_type_name == TxnType.INCOME:
+        return queryset.filter(
+            Q(net_amount=amount) | Q(amount=amount)
+        ).exists()
+
+    return queryset.filter(amount=amount).exists()
+
+
+class ImportTransactionsView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        uploaded_file = request.FILES.get("file")
+        account_id = request.data.get("account_id") or request.data.get("account")
+        user = request.user
+
+        if not uploaded_file:
+            return Response({"detail": "file is required."}, status=400)
+        if not account_id:
+            return Response({"detail": "account_id is required."}, status=400)
+
+        try:
+            parsed_rows = parse_transaction_import_file(uploaded_file)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+
+        if not parsed_rows:
+            return Response({"detail": "No importable transactions were found in the uploaded file."}, status=400)
+
+        transaction_type_map = {
+            txn_type.name: txn_type
+            for txn_type in TransactionType.objects.filter(
+                name__in=[TxnType.INCOME, TxnType.EXPENSES, TxnType.TRANSFER]
+            )
+        }
+        created_ids = []
+        skipped_count = 0
+        ordered_rows = sorted(parsed_rows, key=lambda row: (row["transaction_at"], row["index"]))
+        savings_category = Category.objects.filter(name="Savings", created_by=user).first()
+
+        with transaction.atomic():
+            viewset = TransactionViewSet()
+            viewset.request = request
+
+            for row in ordered_rows:
+                exists = import_transaction_exists(
+                    user=user,
+                    account_id=int(account_id),
+                    row=row,
+                )
+
+                if exists:
+                    skipped_count += 1
+                    continue
+                else:
+                    transaction_type = transaction_type_map[row["transaction_type_name"]]
+                
+                    savings_account = row.get('savings_account', None)
+                    # If there is a savings account, use it
+                    if savings_account:
+                        account_instance = get_or_create_instance(
+                            Account, savings_account, user, 
+                                defaults={'is_default': False, "is_shared": False, "count_in_assets": False, "user_id": user.id }, 
+                                filter_by_user=True,
+                            )
+                        account_instance.categories.set([savings_category])
+                        transaction_type =  transaction_type_map[row["transaction_type_name"]]
+                    
+                    is_income = row["transaction_type_name"] == TxnType.INCOME
+                    is_transfer = row["transaction_type_name"] == TxnType.TRANSFER
+
+                    payload = {
+                        "account_id": account_id,
+                        "user_id": user.id,
+                        "transaction_type_id": transaction_type.id,
+                        "amount": str(row["amount"]),
+                        "net_amount": str(row["amount"]) if is_income else None,
+                        "debit_month_year": row["transaction_at"].strftime("%Y-%m-%d") if is_income else None,
+                        "name": row["name"],
+                        "place_name": build_import_place(row) or None,
+                        "store_name": build_import_store(row) or None,
+                        "tags_names": [row["tag"]] if row["tag"] else [],
+                        "category_name": build_import_category(row) or None,
+                        "notes": build_import_notes(row),
+                        "transaction_at": row["transaction_at"],
+                        "pair_transaction": is_transfer and account_instance.id,
+                    }
+
+                    serializer = TransactionSerializer(data=payload, context={"request": request})
+                    serializer.is_valid(raise_exception=True)
+
+                    instance = viewset.create_transaction_from_data(serializer, payload)
+                    created_ids.append(instance.id)
+                
+        return Response(
+            {
+                "created_count": len(created_ids),
+                "skipped_count": skipped_count,
+                "created_ids": created_ids,
+            },
+            status=201,
+        )
 
 class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
     serializer_class = TransactionSerializer
@@ -132,19 +352,14 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
     def _get_account_id_from_payload(self, data):
         account_id = data.get("account") or data.get("account_id")
         if not account_id:
-            raise serializers.ValidationError({"account_id": "This field is required."})
+            raise ValidationError({"account_id": "This field is required."})
         return int(account_id)
 
-    def _user_can_access_account(self, account, user):
-        return account.user_id == user.id or account.shared_users.filter(pk=user.pk).exists()
+    def _get_locked_account_for_user(self, account_id):
+        return Account.objects.select_for_update().get(
+            pk=account_id, deleted_at__isnull=True)
 
-    def _get_locked_account_for_user(self, account_id, user):
-        account = Account.objects.select_for_update().get(pk=account_id, deleted_at__isnull=True)
-        if not self._user_can_access_account(account, user):
-            raise serializers.ValidationError("Invalid account(s)")
-        return account
-
-    def _get_locked_accounts_for_user(self, account_ids, user):
+    def _get_locked_accounts_for_user(self, account_ids):
         accounts = list(
             Account.objects.select_for_update().filter(
                 pk__in=account_ids,
@@ -152,22 +367,12 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             )
         )
         account_map = {account.pk: account for account in accounts}
-
-        for account_id in account_ids:
-            account = account_map.get(account_id)
-            if account is None or not self._user_can_access_account(account, user):
-                raise serializers.ValidationError("Invalid account(s)")
-
         return account_map
 
-    def perform_create(self, serializer):
-
-        data = self.request.data
+    def create_transaction_from_data(self, serializer, data):
         user = self.request.user
-
         account_id = self._get_account_id_from_payload(data)
         amount = Decimal(data.get("amount") or 0)
-
         transaction_type = TransactionType.objects.get(
             pk=data.get("transaction_type_id")
         )
@@ -188,7 +393,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
             if transaction_type_name == TxnType.INCOME:
                 net_amount = Decimal(data.get("net_amount", 0) or 0)
-                account = self._get_locked_account_for_user(account_id, user)
+                account = self._get_locked_account_for_user(account_id)
 
                 previous_balance = account.balance
                 account.balance += net_amount
@@ -201,13 +406,14 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 clear_validated_keys(serializer.validated_data, ["pair_transaction", "amount"])
 
             elif transaction_type_name == TxnType.EXPENSES:
-                account = self._get_locked_account_for_user(account_id, user)
+                account = self._get_locked_account_for_user(account_id)
 
                 previous_balance = account.balance
 
                 if account.balance < amount:
-                    raise serializers.ValidationError("Insufficient funds")
-
+                    raise ValidationError({
+                        "non_field_errors": ["Insufficient funds"]
+                    })
                 account.balance -= amount
                 account.save()
 
@@ -222,18 +428,19 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 pair_id = int(data.get("pair_transaction"))
 
                 if account_id == pair_id:
-                    raise serializers.ValidationError("Cannot transfer to the same account")
+                    raise ValidationError("Cannot transfer to the same account")
 
-                account_map = self._get_locked_accounts_for_user([account_id, pair_id], user)
+                account_map = self._get_locked_accounts_for_user([account_id, pair_id])
                 from_acc = account_map.get(account_id)
                 to_acc = account_map.get(pair_id)
 
                 if not from_acc or not to_acc:
-                    raise serializers.ValidationError("Invalid account(s)")
+                    raise ValidationError("Invalid account(s)")
 
                 if from_acc.balance < amount:
-                    raise serializers.ValidationError("Insufficient funds")
-
+                    raise ValidationError({
+                        "non_field_errors": ["Insufficient funds"]
+                    })
                 from_previous = from_acc.balance
                 to_previous = to_acc.balance
 
@@ -264,6 +471,11 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             )
 
         log_transaction(instance=instance, action=UserAction.CREATE, created=True)
+
+        return instance
+    
+    def perform_create(self, serializer):
+        self.create_transaction_from_data(serializer, self.request.data)
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -322,7 +534,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             if pair_transaction_id:
                 account_ids.add(pair_transaction_id)
 
-            account_map = self._get_locked_accounts_for_user(account_ids, user)
+            account_map = self._get_locked_accounts_for_user(account_ids)
 
             # REVERSE OLD TRANSACTION
             old_account = account_map.get(instance.account_id)
@@ -353,22 +565,21 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
             elif transaction_type_name == TxnType.EXPENSES:
                 if new_account.balance < new_amount:
-                    raise serializers.ValidationError("Insufficient funds")
-
+                    raise ValidationError({
+                        "non_field_errors": ["Insufficient funds"]
+                    })
                 prev_balance = new_account.balance
                 new_account.balance -= new_amount
 
                 data["previous_balance"] = prev_balance
 
             elif transaction_type_name == TxnType.TRANSFER:
-                if account_id == pair_transaction_id:
-                    raise serializers.ValidationError("Cannot transfer to same account")
-
                 pair_account = account_map.get(pair_transaction_id)
 
                 if new_account.balance < new_amount:
-                    raise serializers.ValidationError("Insufficient funds")
-
+                    raise ValidationError({
+                        "non_field_errors": ["Insufficient funds"]
+                    })
                 from_prev = new_account.balance
                 to_prev = pair_account.balance
 
@@ -421,7 +632,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             # TRANSFER → reverse both sides
             elif transaction_type == TxnType.TRANSFER:
                 if not instance.account_id or not instance.pair_transaction_id:
-                    raise serializers.ValidationError("Invalid transfer accounts")
+                    raise ValidationError("Invalid transfer accounts")
 
                 accounts = Account.objects.select_for_update().filter(
                     pk__in=[instance.account_id, instance.pair_transaction_id]
@@ -432,7 +643,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 to_account = account_dict.get(instance.pair_transaction_id)
 
                 if not from_account or not to_account:
-                    raise serializers.ValidationError("Invalid account(s)")
+                    raise ValidationError("Invalid account(s)")
 
                 amount = Decimal(instance.amount or 0)
                 

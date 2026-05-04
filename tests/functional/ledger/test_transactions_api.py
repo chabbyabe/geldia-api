@@ -4,6 +4,7 @@ from http import client as http_client
 
 from django.urls import reverse
 from django.utils import timezone
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from ledger.constants import TxnType
 from ledger.models import Category, Place, Store, Tag, Transaction, TransactionType
@@ -124,6 +125,96 @@ class TestTransactionViewSet:
         transaction = Transaction.objects.get(name="Move to savings")
         assert transaction.account_id == from_account.id
         assert transaction.pair_transaction_id == to_account.id
+
+    def test_import_transactions_creates_income_and_expense_rows(self, client):
+        user = self._auth(client, username="txn_import_user")
+        self._txn_type(TxnType.INCOME)
+        self._txn_type(TxnType.EXPENSES)
+        account = self._account(user, name="Checking", balance="100.00")
+
+        content = "\n".join(
+            [
+                "Datum\tNaam / Omschrijving\tRekening\tTegenrekening\tCode\tAf Bij\tBedrag (EUR)\tMutatiesoort\tMededelingen\tSaldo na mutatie\tTag",
+                "20260330\tSalary March\tNL00BANK0123456789\tNL00EMPLOYER123456\tOV\tBij\t1200,00\tOverschrijving\tMonthly salary\t1300,00\tincome",
+                "20260331\tAlbert Heijn\tNL00BANK0123456789\t\tBA\tAf\t74,20\tBetaalautomaat\tGroceries\t1225,80\tfood",
+            ]
+        )
+        uploaded_file = SimpleUploadedFile(
+            "transactions.tsv",
+            content.encode("utf-8"),
+            content_type="text/tab-separated-values",
+        )
+
+        response = client.post(
+            reverse("ledger:transaction-import"),
+            {
+                "account_id": account.id,
+                "file": uploaded_file,
+            },
+        )
+
+        assert response.status_code == http_client.CREATED
+        assert response.data["created_count"] == 2
+        assert response.data["skipped_count"] == 0
+
+        account.refresh_from_db()
+        assert account.balance == Decimal("1225.80")
+
+        salary = Transaction.objects.get(name="Salary March")
+        groceries = Transaction.objects.get(name="Albert Heijn")
+
+        assert salary.transaction_type.name == TxnType.INCOME
+        assert salary.net_amount == Decimal("1200.00")
+        assert salary.previous_balance == Decimal("100.00")
+
+        assert groceries.transaction_type.name == TxnType.EXPENSES
+        assert groceries.amount == Decimal("74.20")
+        assert groceries.previous_balance == Decimal("1300.00")
+
+    def test_import_transactions_skips_duplicates(self, client):
+        user = self._auth(client, username="txn_import_dupe_user")
+        income = self._txn_type(TxnType.INCOME)
+        account = self._account(user, name="Checking", balance="100.00")
+        transaction_at = timezone.make_aware(datetime(2026, 3, 30, 0, 0, 0))
+
+        Transaction.objects.create(
+            user=user,
+            account=account,
+            transaction_type=income,
+            name="Salary March",
+            amount=Decimal("1200.00"),
+            net_amount=Decimal("1200.00"),
+            transaction_at=transaction_at,
+            previous_balance=Decimal("100.00"),
+            created_by=user,
+        )
+
+        content = "\n".join(
+            [
+                "Datum\tNaam / Omschrijving\tRekening\tTegenrekening\tCode\tAf Bij\tBedrag (EUR)\tMutatiesoort\tMededelingen\tSaldo na mutatie\tTag",
+                "20260330\tSalary March\tNL00BANK0123456789\tNL00EMPLOYER123456\tOV\tBij\t1200,00\tOverschrijving\tMonthly salary\t1300,00\tincome",
+            ]
+        )
+        uploaded_file = SimpleUploadedFile(
+            "transactions.tsv",
+            content.encode("utf-8"),
+            content_type="text/tab-separated-values",
+        )
+
+        response = client.post(
+            reverse("ledger:transaction-import"),
+            {
+                "account_id": account.id,
+                "file": uploaded_file,
+            },
+        )
+
+        assert response.status_code == http_client.CREATED
+        assert response.data["created_count"] == 0
+        assert response.data["skipped_count"] == 1
+
+        account.refresh_from_db()
+        assert account.balance == Decimal("100.00")
 
 
 class TestInitialTransactionDataView:

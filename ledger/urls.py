@@ -5,7 +5,7 @@ from .views.tags import TagViewSet
 from .views.stores import StoreViewSet
 from .views.categories import CategoryViewSet
 from .views.accounts import AccountViewSet
-from .views.transactions import TransactionViewSet, GetInitialTransactionDataView
+from .views.transactions import TransactionViewSet, GetInitialTransactionDataView, ImportTransactionsView
 from users.views import UserViewSet
 from .views.dashboard import DashboardViewSet
 from .views.reports import ReportViewSet
@@ -28,8 +28,8 @@ router.register(r'reports', ReportViewSet, basename='report')
 router.register(r'logs', TransactionLogViewSet, basename='log')
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('transactions/import/', ImportTransactionsView.as_view(), name='transaction-import'),
     path('transactions/initial/list/', GetInitialTransactionDataView.as_view(), 
         name='intial-data'),
+    path('', include(router.urls)),
 ]
-urlpatterns += router.urls

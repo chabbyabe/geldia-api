@@ -22,7 +22,6 @@ class Place(CommonInfo):
     classification = models.CharField(max_length=255, help_text='Town, City, Village, Online', null=True, blank=True)
 
     class Meta:
-        unique_together = ("name", "classification")
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -65,11 +64,10 @@ class Category(CommonInfo):
     
 
 class Store(CommonInfo):
-    name = models.CharField(max_length=255, unique=True, help_text='HEMA, IKEA, Online')
-    classification = models.CharField(max_length=255, help_text='DIY, Restaurant, Supermarket, Online', null=True, blank=True)
+    name = models.CharField(max_length=255, unique=True, help_text='Hema, Ikea, Online')
+    classification = models.CharField(max_length=255, help_text='Diy, Restaurant, Supermarket, Online', null=True, blank=True)
 
     class Meta:
-        unique_together = ("name", "classification")
         ordering = ["-created_at"]
 
     def __str__(self) -> str:

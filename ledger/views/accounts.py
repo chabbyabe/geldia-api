@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.db.models import Q
+from django.db.models import Case, When, Value, IntegerField
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -19,10 +19,23 @@ class AccountViewSet(viewsets.ModelViewSet, UserAuditMixin):
     # Get only for the authenticated user's own account
     def get_queryset(self):
         user = self.request.user
+
         return (
             Account.objects
             .visible_to(user)
-            .distinct().order_by('-is_default', '-created_at')
+            .annotate(
+                is_owner=Case(
+                    When(user=user, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by(
+                '-is_owner', 
+                '-is_default',
+                '-created_at',
+            )
+            .distinct()
         )
     
     def perform_create(self, serializer) -> None:

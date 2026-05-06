@@ -258,3 +258,8 @@ def get_date_range(
         end_date = today.replace(month=12, day=31)
 
     return start_date, end_date
+
+
+def is_keyword_present(keywords: list[str], text: str) -> bool:
+    text_lower = text.lower()
+    return any(k.lower() in text_lower for k in keywords)

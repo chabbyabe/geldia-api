@@ -17,6 +17,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Final, TypedDict
+from urllib.parse import urljoin
 
 from decouple import Csv, config
 
@@ -213,6 +214,31 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "SIGNING_KEY": SECRET_KEY,
 }
+
+# Email
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default=(
+        "django.core.mail.backends.console.EmailBackend"
+        if DEBUG
+        else "django.core.mail.backends.smtp.EmailBackend"
+    ),
+)
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@geldia.local")
+SERVER_EMAIL = config("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
+EMAIL_HOST = config("EMAIL_HOST", default="localhost")
+EMAIL_PORT = config("EMAIL_PORT", default=25, cast=int)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=False, cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10, cast=int)
+API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:8000")
+APP_URL = config("APP_URL", default="http://127.0.0.1:3000")
+REGISTRATION_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/register/verify/")
+REGISTRATION_MANUAL_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/email/manual-verify/")
+PASSWORD_CHANGE_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/password/change/verify/")
+PASSWORD_CHANGE_MANUAL_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/password/change/manual-verify/")
 
 # CORS Headers	# CORS Headers
 CORS_ALLOWED_ORIGINS = config(

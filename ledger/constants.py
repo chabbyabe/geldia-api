@@ -129,15 +129,9 @@ IMPORT_TXN_CATEGORIES: dict[str, str] = {
     # insurance / government
     "infomedics": "Health Insurance",
     "de christelijke zorg": "Health Insurance",
-    "salary": "Salary",
-    "salaries": "Salary",
-    "ned org": "Salary",
-    "living image": "Salary",
-    "driessen": "Salary",
     "kosten oranjepakket": "Subscriptions",
-    "voorshot": "Allowance",
-    "teruggaaf": "Allowance",
-    "belastingdienst": "Allowance",
+    "immigratie en naturalisatie dienst": "Government",
+
 
     # groceries
     "kruidvat": "Groceries",
@@ -152,6 +146,7 @@ IMPORT_TXN_CATEGORIES: dict[str, str] = {
     "spar": "Groceries",
     "alber heijn": "Groceries",
     "ekoplaza": "Groceries",
+    "etos": "Groceries",
 
     # care
     "alvarado cuts": "Care",
@@ -166,6 +161,8 @@ IMPORT_TXN_CATEGORIES: dict[str, str] = {
     "barista": "Eat Out",
     "www.itoshii.nl": "Eat Out",
     "zettle*barista": "Eat Out",
+    "bck*kiosk": "Eat Out",
+    "i love sushi": "Eat Out",
 
     # entertainment
     "netflix": "Entertainment",
@@ -196,6 +193,7 @@ IMPORT_TXN_CATEGORIES: dict[str, str] = {
     "converse": "Clothing",
     "zeeman": "Clothing",
     "c&a": "Clothing",
+    "scapino": "Clothing",
 
     # furniture / home
     "ikea": "Furnitures",
@@ -203,18 +201,26 @@ IMPORT_TXN_CATEGORIES: dict[str, str] = {
     # transport
     "ns groep": "Transportation",
     "ov chipkaart": "Transportation",
+    "www.ovpay.nl": "Transportation",
 
     # hardware
     "praxis": "Hardware",
     "bck*praxis": "Hardware",
     "solow": "Hardware",
     "intratuin": "Hardware",
+    "bck*gamma": "Hardware",
 
     # gifts / misc retail
     "pay.nl*lindt": "Gift",
     "cycleman": "Others",
     "word international": "Tithes",
+    "booking.com": "Travel",
+    "booking": "Travel",
+    "agoda": "Travel",
+    "klm": "Travel",
+    "western union": "Gift",
+    "rituals": "Gift",
 }
+
 PAYMENT_TYPES_LOOKUP = {"BA"}
-TAGS_LOOKUP = {}
 CREDIT_TRANSFER_LOOKUP = {"bij", "Bij", "Credit", "credit"}

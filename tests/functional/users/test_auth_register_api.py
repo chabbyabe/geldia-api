@@ -19,6 +19,7 @@ class TestAuthRegisterViewSet:
             "first_name": first_name ,
             "last_name": last_name,
             "username": username,
+            "email": f"{username}@example.com",
             "password_1": password,
             "password_2": password,
         }
@@ -32,6 +33,7 @@ class TestAuthRegisterViewSet:
         assert response.status_code == http_client.CREATED
         assert response["content-type"] == "application/json"
         assert response.data["user"]["username"] == username
+        assert response.data["user"]["email"] == f"{username}@example.com"
         assert response.data["user"]["first_name"] == first_name
         assert response.data["user"]["last_name"] == last_name
 

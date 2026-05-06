@@ -92,10 +92,7 @@ class DashboardViewSet(ViewSet):
         savings_balance = (
             Account.objects
             .visible_to(request.user)
-            .filter(
-                Q(name__iexact="Savings") |
-                Q(categories__name="Savings")
-            )
+            .filter(is_savings=True)
             .distinct()
             .aggregate(balance=Sum("balance"))["balance"]
             or 0
@@ -149,7 +146,6 @@ class DashboardViewSet(ViewSet):
                 .filter_by_transaction_type(TxnType.INCOME)
                 .with_transaction_date()
                 .for_year(year)
-                .filter(gross_amount__isnull=False)
                 .annotate(month=TruncMonth("transaction_date"))
                 .values("month")
                 .annotate(

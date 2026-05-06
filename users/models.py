@@ -13,6 +13,9 @@ from users.querysets.accounts import AccountQuerySet
 
 class Company(CommonInfo):
     name = models.CharField(max_length=255)
+    is_current = models.BooleanField(default=False)
+    joined_at = models.DateTimeField(null=True, blank=True)
+    resigned_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name
@@ -27,6 +30,7 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
     last_name = models.CharField(max_length=225)
     username = models.CharField(max_length=50, unique=True, null=True, blank=True)
     email = models.EmailField(max_length=500, unique=True, blank=True, null=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
     company = models.ForeignKey(
         Company,
         on_delete=models.SET_NULL,
@@ -73,6 +77,30 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
         return None
 
 
+class EmailVerification(models.Model):
+    class Purpose(models.TextChoices):
+        REGISTRATION = "registration", "Registration"
+        PASSWORD_CHANGE = "password_change", "Password Change"
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_verifications",
+    )
+    purpose = models.CharField(max_length=32, choices=Purpose.choices)
+    token = models.CharField(max_length=128, unique=True)
+    pending_password = models.CharField(max_length=128, blank=True, null=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user} - {self.purpose}"
+
+
 class Account(CommonInfo):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")
     name = models.CharField(max_length=255)
@@ -87,6 +115,7 @@ class Account(CommonInfo):
     balance = models.DecimalField(default=0, max_digits=19, decimal_places=2)
     count_in_assets = models.BooleanField(default=True)
     is_default = models.BooleanField(default=False)
+    is_savings = models.BooleanField(default=False)
     is_shared = models.BooleanField(default=False, help_text="Is shared with other person")
     notes = models.CharField(max_length=300, blank=True)
     shared_users = models.ManyToManyField(

@@ -29,7 +29,8 @@ from ledger.utils import (
     clear_validated_keys,
     parse_transaction_import_file,
     serialize_for_json,
-    smart_title
+    smart_title,
+    is_keyword_present
 )
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -39,7 +40,7 @@ from difflib import SequenceMatcher
 
 try:
     from rapidfuzz import fuzz
-except ModuleNotFoundError:  # pragma: no cover - exercised only when optional dep is missing
+except ModuleNotFoundError:
     fuzz = None
 
 def log_transaction(instance : any, action: str, created: bool = False, **kwargs):
@@ -113,6 +114,12 @@ def build_import_place(row):
     if code not in PAYMENT_TYPES_LOOKUP:
         return None
     name = _clean_name(row.get("name", ""))
+
+    # Exclude place if keyword are found
+    exlude_keywords = ("www.ovpay.nl",)
+    if is_keyword_present(exlude_keywords, name):
+        return None
+    
     return _get_last_word(name)
 
 
@@ -123,6 +130,11 @@ def build_import_store(row):
 
     name = _clean_name(row.get("name", ""))
 
+    # Exclude place if keyword are found
+    exclude_keywords = ("www.ovpay.nl",)
+    if is_keyword_present(exclude_keywords, name):
+        return None
+        
     store = _get_first_word(name)
     place = _get_last_word(name)
 
@@ -160,15 +172,39 @@ def match_import_category(text: str, lookup: dict[str, str]) -> Optional[str]:
 
 
 def build_import_category(row: dict) -> str:
-    name = row.get("name") or ""
-    payment_type = (row.get("payment_type") or "").lower()
-    code = (row.get("code") or "").strip()
+    name = row.get("name", "")
+    notes = row.get("notes", "")
+    transaction_type_name = (row.get("transaction_type_name") or "").lower()
+    code = (row.get("code", "")).strip()
 
-    if code == "OV" and payment_type == "transfer":
+    if code == "OV" and transaction_type_name == "transfer":
         return "Savings"
     
+    # Check if there is salary indication in the description
+    salary_keywords = ("salary", "salaris")
+    refund_keywords = ("refund", "return", "returned", "cashback","retour", 
+                       "retourpintransactie", "geretourneerd", "terugbetaling")
+    allowance_keywords = ("allowance", "teruggaaf", "voorschot", "toeslag", )
+    gift_keywords = ("gift", "present", "donation", "cadeau", "schenking", "zakgeld", "extraatje", "geschenk")
+    subscription_keywords = ("subscription", "abonnement", "abonnementen")
+    
+    if is_keyword_present(salary_keywords, notes):
+        return "Salary"
+    
+    if is_keyword_present(refund_keywords, notes):
+        return "Refund"
+    
+    if is_keyword_present(allowance_keywords, notes):
+        return "Allowance"
+    
+    if is_keyword_present(gift_keywords, notes):
+        return "Gift"
+     
+    if is_keyword_present(subscription_keywords, notes):
+        return "Subscriptions"
+    
     category = match_import_category(name, IMPORT_TXN_CATEGORIES)
-
+    
     if category:
         return category
 
@@ -234,11 +270,12 @@ class ImportTransactionsView(APIView):
             viewset.request = request
 
             for row in ordered_rows:
-                exists = import_transaction_exists(
-                    user=user,
-                    account_id=int(account_id),
-                    row=row,
-                )
+                # exists = import_transaction_exists(
+                #     user=user,
+                #     account_id=int(account_id),
+                #     row=row,
+                # )
+                exists = False
 
                 if exists:
                     skipped_count += 1
@@ -251,7 +288,8 @@ class ImportTransactionsView(APIView):
                     if savings_account:
                         account_instance = get_or_create_instance(
                             Account, savings_account, user, 
-                                defaults={'is_default': False, "is_shared": False, "count_in_assets": False, "user_id": user.id }, 
+                                defaults={'is_default': False, "is_shared": False, "is_savings": True, 
+                                          "count_in_assets": False, "user_id": user.id }, 
                                 filter_by_user=True,
                             )
                         account_instance.categories.set([savings_category])

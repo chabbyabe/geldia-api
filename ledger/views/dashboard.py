@@ -147,6 +147,7 @@ class DashboardViewSet(ViewSet):
                 .with_transaction_date()
                 .for_year(year)
                 .annotate(month=TruncMonth("transaction_date"))
+                .filter(category__name__in=("Salary", "Gift"))
                 .values("month")
                 .annotate(
                     net_amount_total=Sum("net_amount"),

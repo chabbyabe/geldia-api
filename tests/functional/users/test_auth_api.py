@@ -73,6 +73,7 @@ class TestDJRestAuthIntegration:
         login_data = {
             "username": username,
             "password": wrong_password,
+            "email": "missing@example.com",
         }
 
         # Act
@@ -393,7 +394,7 @@ class TestDJRestAuthIntegration:
         client.authenticate_user(user.username, password)
 
         url = reverse("rest_password_change")
-        data = {"new_password1": "newP@ssW0rd!123", "new_password2": "newP@ssW0rd!123"}
+        data = {"new_password_1": "newP@ssW0rd!123", "new_password2": "newP@ssW0rd!123"}
 
         response = client.post(url, data)
 
@@ -416,7 +417,7 @@ class TestDJRestAuthIntegration:
             reverse("rest_password_forgot"),
             {
                 "email": user.email,
-                "new_password1": "newP@ssW0rd!123",
+                "new_password_1": "newP@ssW0rd!123",
                 "new_password2": "newP@ssW0rd!123",
             },
         )
@@ -470,7 +471,7 @@ class TestDJRestAuthIntegration:
             reverse("rest_password_forgot"),
             {
                 "email": user.email,
-                "new_password1": "newP@ssW0rd!123",
+                "new_password_1": "newP@ssW0rd!123",
                 "new_password2": "newP@ssW0rd!123",
             },
         )
@@ -490,7 +491,7 @@ class TestDJRestAuthIntegration:
             reverse("rest_password_forgot"),
             {
                 "email": user.email,
-                "new_password1": "newP@ssW0rd!123",
+                "new_password_1": "newP@ssW0rd!123",
                 "new_password2": "newP@ssW0rd!123",
             },
         )
@@ -509,7 +510,7 @@ class TestDJRestAuthIntegration:
             reverse("rest_password_forgot"),
             {
                 "email": "missing@example.com",
-                "new_password1": "newP@ssW0rd!123",
+                "new_password_1": "newP@ssW0rd!123",
                 "new_password2": "newP@ssW0rd!123",
             },
         )
@@ -526,7 +527,7 @@ class TestDJRestAuthIntegration:
         url = reverse("rest_password_change")
 
         data = {
-            "new_password1": "newP@ssW0rd!123",
+            "new_password_1": "newP@ssW0rd!123",
             "new_password2": "newP@ssW0rd!1235678",
         }
 

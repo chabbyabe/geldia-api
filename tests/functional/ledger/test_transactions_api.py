@@ -186,9 +186,9 @@ class TestTransactionViewSet:
             net_amount=Decimal("1200.00"),
             transaction_at=transaction_at,
             previous_balance=Decimal("100.00"),
+            notes="Monthly salary | Payment Type: Overschrijving | Code: OV",
             created_by=user,
         )
-
         content = "\n".join(
             [
                 "Datum\tNaam / Omschrijving\tRekening\tTegenrekening\tCode\tAf Bij\tBedrag (EUR)\tMutatiesoort\tMededelingen\tSaldo na mutatie\tTag",
@@ -208,7 +208,6 @@ class TestTransactionViewSet:
                 "file": uploaded_file,
             },
         )
-
         assert response.status_code == http_client.CREATED
         assert response.data["created_count"] == 0
         assert response.data["skipped_count"] == 1

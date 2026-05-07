@@ -216,12 +216,13 @@ def import_transaction_exists(*, user, account_id: int, row: dict[str, object]) 
     amount = row["amount"]
     transaction_at = row["transaction_at"]
     name = row["name"]
-
+    notes = build_import_notes(row)
     queryset = Transaction.objects.visible_to(user).filter(
         account_id=account_id,
         transaction_type__name=transaction_type_name,
         name=name,
         transaction_at=transaction_at,
+        notes=notes
     )
 
     if transaction_type_name == TxnType.INCOME:
@@ -270,20 +271,21 @@ class ImportTransactionsView(APIView):
             viewset.request = request
 
             for row in ordered_rows:
-                # exists = import_transaction_exists(
-                #     user=user,
-                #     account_id=int(account_id),
-                #     row=row,
-                # )
-                exists = False
-
+                exists = import_transaction_exists(
+                    user=user,
+                    account_id=int(account_id),
+                    row=row,
+                )
                 if exists:
                     skipped_count += 1
                     continue
                 else:
                     transaction_type = transaction_type_map[row["transaction_type_name"]]
-                
+                    pair_transaction_id = None
+                    main_account_id = account_id
+
                     savings_account = row.get('savings_account', None)
+                    is_savings_credit = row.get('is_savings_credit', False)
                     # If there is a savings account, use it
                     if savings_account:
                         account_instance = get_or_create_instance(
@@ -294,12 +296,18 @@ class ImportTransactionsView(APIView):
                             )
                         account_instance.categories.set([savings_category])
                         transaction_type =  transaction_type_map[row["transaction_type_name"]]
-                    
+
+                        pair_transaction_id = account_instance.id
+                        # If `is_savings_credit` is true, swap the account_id and pair_transaction
+                        if is_savings_credit:
+                            main_account_id = account_instance.id
+                            pair_transaction_id = account_id
+
                     is_income = row["transaction_type_name"] == TxnType.INCOME
                     is_transfer = row["transaction_type_name"] == TxnType.TRANSFER
-
+            
                     payload = {
-                        "account_id": account_id,
+                        "account_id": main_account_id,
                         "user_id": user.id,
                         "transaction_type_id": transaction_type.id,
                         "amount": str(row["amount"]),
@@ -312,9 +320,11 @@ class ImportTransactionsView(APIView):
                         "category_name": build_import_category(row) or None,
                         "notes": build_import_notes(row),
                         "transaction_at": row["transaction_at"],
-                        "pair_transaction": is_transfer and account_instance.id,
                     }
 
+                    if is_transfer and pair_transaction_id is not None:
+                        payload["pair_transaction"] = pair_transaction_id
+                        
                     serializer = TransactionSerializer(data=payload, context={"request": request})
                     serializer.is_valid(raise_exception=True)
 
@@ -463,8 +473,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                                     ["pair_transaction", "net_amount", "gross_amount", "debit_month_year"])
 
             elif transaction_type_name ==  TxnType.TRANSFER:
-                pair_id = int(data.get("pair_transaction"))
-
+                pair_id = int(data.get("pair_transaction", 0))
                 if account_id == pair_id:
                     raise ValidationError("Cannot transfer to the same account")
 
@@ -473,12 +482,17 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 to_acc = account_map.get(pair_id)
 
                 if not from_acc or not to_acc:
-                    raise ValidationError("Invalid account(s)")
+                    raise ValidationError({"non_field_errors": ["Invalid account(s)"]})
 
                 if from_acc.balance < amount:
-                    raise ValidationError({
-                        "non_field_errors": ["Insufficient funds"]
-                    })
+                    notes = data.get("notes", "")
+
+                    if is_keyword_present(("Van", "From"), notes):
+                        from_acc.balance += amount
+                    else:
+                        raise ValidationError({
+                            "non_field_errors": ["Insufficient funds"]
+                        })
                 from_previous = from_acc.balance
                 to_previous = to_acc.balance
 

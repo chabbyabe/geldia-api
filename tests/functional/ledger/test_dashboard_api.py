@@ -21,11 +21,12 @@ class TestDashboardViewSet:
         client.authenticate_user(username, password)
         return user
 
-    def _create_account(self, user, name="Main", balance="0"):
+    def _create_account(self, user, name="Main", balance="0", is_savings=False):
         return Account.objects.create(
             user=user,
             name=name,
             balance=Decimal(balance),
+            is_savings=is_savings,
         )
 
     def _create_transaction_type(self, name, color="#111111", icon="icon"):
@@ -231,7 +232,7 @@ class TestDashboardViewSet:
         expenses = self._create_transaction_type(TxnType.EXPENSES, color="#A00", icon="expense")
 
         main_account = self._create_account(user, name="Main")
-        self._create_account(user, name="Savings", balance="1234.56")
+        self._create_account(user, name="Savings", balance="1234.56", is_savings=True)
 
         current_year = self._get_current_year()
         in_range_date = timezone.make_aware(datetime(current_year, 6, 1, 12, 0, 0))
@@ -264,7 +265,6 @@ class TestDashboardViewSet:
 
         assert response.status_code == http_client.OK
         assert len(response.data) == 3
-
         by_name = {item["name"]: item for item in response.data}
         assert by_name[TxnType.INCOME]["amount"] == "3000.00"
         assert by_name[TxnType.EXPENSES]["amount"] == "500.00"
@@ -284,6 +284,8 @@ class TestDashboardViewSet:
 
         current_year = self._get_current_year()
 
+        salary_category = self._create_category("Salary", income, color="#F00", icon="salary")
+
         self._create_transaction(
             user=user,
             account=account,
@@ -291,8 +293,10 @@ class TestDashboardViewSet:
             amount="0.00",
             gross_amount="5000.00",
             net_amount="4500.00",
+            category=salary_category,
             transaction_at=timezone.make_aware(datetime(current_year, 1, 15, 10, 0, 0)),
         )
+        
         self._create_transaction(
             user=user,
             account=account,

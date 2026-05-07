@@ -231,6 +231,17 @@ class PasswordChangeRequestSerializer(serializers.Serializer):
     new_password_1 = serializers.CharField(write_only=True)
     new_password_2 = serializers.CharField(write_only=True)
 
+    def to_internal_value(self, data: Any) -> dict[str, Any]:
+        if isinstance(data, dict):
+            normalized_data = data.copy()
+            if "new_password_1" not in normalized_data and "new_password1" in normalized_data:
+                normalized_data["new_password_1"] = normalized_data["new_password1"]
+            if "new_password_2" not in normalized_data and "new_password2" in normalized_data:
+                normalized_data["new_password_2"] = normalized_data["new_password2"]
+            data = normalized_data
+
+        return super().to_internal_value(data)
+
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["new_password_1"] != attrs["new_password_2"]:
             raise serializers.ValidationError(
@@ -245,6 +256,17 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
     new_password_1 = serializers.CharField(write_only=True)
     new_password_2 = serializers.CharField(write_only=True)
+
+    def to_internal_value(self, data: Any) -> dict[str, Any]:
+        if isinstance(data, dict):
+            normalized_data = data.copy()
+            if "new_password_1" not in normalized_data and "new_password1" in normalized_data:
+                normalized_data["new_password_1"] = normalized_data["new_password1"]
+            if "new_password_2" not in normalized_data and "new_password2" in normalized_data:
+                normalized_data["new_password_2"] = normalized_data["new_password2"]
+            data = normalized_data
+
+        return super().to_internal_value(data)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["new_password_1"] != attrs["new_password_2"]:

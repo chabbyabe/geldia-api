@@ -132,10 +132,13 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
         notes = mapped_row.get("notes", "")
         match = re.search(r"(?:Oranje spaarrekening|Beleggingsrek.)\s+(\S+)", notes)
         savings_account = match.group(1) if match else None
-
+        is_savings_credit = False
         # Set transaction type
         if savings_account:
             transaction_type_name = "Transfer"
+            if transfer_type in CREDIT_TRANSFER_LOOKUP:
+                is_savings_credit = True
+
         elif transfer_type in CREDIT_TRANSFER_LOOKUP:
             transaction_type_name = "Income"
         else:
@@ -151,11 +154,13 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
                 "notes": notes,
                 "payment_type": payment_type,
                 "code": code,
+                "transfer_type": transfer_type,
                 "balance_after": balance_after,
                 "counterparty_account": mapped_row.get("counterparty_account") or "",
                 "account_number": mapped_row.get("account_number") or "",
                 "tag": mapped_row.get("tag") or "",
-                "savings_account": savings_account
+                "savings_account": savings_account,
+                "is_savings_credit": is_savings_credit,
             }
         )
 

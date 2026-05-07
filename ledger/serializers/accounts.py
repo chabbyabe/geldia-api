@@ -29,6 +29,7 @@ class AccountSerializer(serializers.ModelSerializer):
         required=False,
     )
     has_transactions = serializers.SerializerMethodField()
+    transactions = serializers.SerializerMethodField()
     class Meta:
         model = Account
         exclude = ['created_by', 'updated_by', 'deleted_by']
@@ -36,6 +37,11 @@ class AccountSerializer(serializers.ModelSerializer):
  
     def get_has_transactions(self, obj: Account) -> bool:
         return obj.transactions.exists()
+    
+    def get_transactions(self, obj: Account):
+        from ledger.serializers.transactions import TransactionSerializer
+        transactions = obj.transactions.order_by("-transaction_at")[:5]
+        return TransactionSerializer(transactions, many=True).data
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         request = self.context["request"]

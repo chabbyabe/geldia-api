@@ -2,7 +2,7 @@ import json
 import os
 from django.conf import settings
 from django.db import transaction
-from ledger.models import Category
+from ledger.models import Category, TransactionType
 
 from ledger.utils import smart_title
 # -------------------------
@@ -43,16 +43,30 @@ def seed_categories_for_user(user_id, stdout=None):
         return
 
     categories_by_source_id = {}
+    transaction_type_ids = set(
+        TransactionType.objects.filter(pk__in={
+            int(row["transaction_type_id"])
+            for row in table_data
+            if row.get("transaction_type_id") is not None
+        }).values_list("id", flat=True)
+    )
 
     with transaction.atomic():
         for row in table_data:
             source_category_id = int(row["id"])
+            source_transaction_type_id = row.get("transaction_type_id")
+            transaction_type_id = (
+                int(source_transaction_type_id)
+                if source_transaction_type_id is not None
+                and int(source_transaction_type_id) in transaction_type_ids
+                else None
+            )
             defaults = {
                 "name": smart_title(row["name"]),
                 "notes": row.get("notes"),
                 "color": row.get("color"),
                 "icon": row.get("icon"),
-                "transaction_type_id": row.get("transaction_type_id"),
+                "transaction_type_id": transaction_type_id,
                 "created_by_id": user_id,
             }
 

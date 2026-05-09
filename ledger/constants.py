@@ -37,6 +37,7 @@ MONTHS : dict[int, str] = {
 class BaseFilterType:
     TRANSACTION: str = "Transaction"
     TRANSACTION_LOG: str = "TransactionLog"
+    ACCOUNT_LOG: str = "AccountLog"
     CATEGORY: str = "Category"
     TAG: str = "Tag"
     PLACE: str = "Place"

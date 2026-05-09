@@ -172,3 +172,33 @@ class TransactionLog(models.Model):
 
     def __str__(self) -> str:
         return f"TransactionLog #{self.id} - {self.action}"
+
+
+class AccountLog(models.Model):
+    account = models.ForeignKey(
+        "users.Account",
+        related_name="logs",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="account_logs",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    old_data = models.JSONField(null=True, blank=True)
+    new_data = models.JSONField(null=True, blank=True)
+    note = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["account", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"AccountLog #{self.id} - {self.action}"

@@ -1,11 +1,15 @@
 from django.core.mail import send_mail
 import secrets
 from datetime import timedelta
+import logging
 from django.utils import timezone
 from django.conf import settings
 from django.utils.http import urlencode
 
 from users.models import EmailVerification, User
+
+logger = logging.getLogger(__name__)
+
 
 def create_email_verification(
     *,
@@ -14,7 +18,7 @@ def create_email_verification(
     expiry_minutes: int,
     pending_password: str | None = None,
 ) -> EmailVerification:
-    
+
     EmailVerification.objects.filter(
         user=user,
         purpose=purpose,
@@ -30,7 +34,8 @@ def create_email_verification(
     )
 
 
-def send_verification_email(*, user: User, verification: EmailVerification) -> None:
+def send_verification_email(
+        *, user: User, verification: EmailVerification) -> None:
     if verification.purpose == EmailVerification.Purpose.REGISTRATION:
         verification_url = (
             f"{settings.REGISTRATION_VERIFY_URL}"
@@ -41,7 +46,7 @@ def send_verification_email(*, user: User, verification: EmailVerification) -> N
         body = (
             "Click this link to activate your account:\n\n"
             f"{verification_url}\n\n"
-            "If the link does not work, open this manual verification page:\n\n"
+            "If the link does not work, open this manual verification page:\n"
             f"{manual_verification_url}\n\n"
             "Then copy and paste this verification token:\n"
             f"{verification.token}\n"
@@ -56,19 +61,33 @@ def send_verification_email(*, user: User, verification: EmailVerification) -> N
         body = (
             "Click this link to confirm your password change:\n\n"
             f"{verification_url}\n\n"
-            "If the link does not work, open this manual verification page:\n\n"
+            "If the link does not work, open this manual verification page:\n"
             f"{manual_verification_url}\n\n"
             "Then copy and paste this verification token:\n"
             f"{verification.token}\n"
         )
 
-    send_mail(
-        subject,
-        body,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to send verification email.",
+            extra={
+                "purpose": verification.purpose,
+                "recipient": user.email,
+                "email_backend": settings.EMAIL_BACKEND,
+                "email_host": settings.EMAIL_HOST,
+                "email_port": settings.EMAIL_PORT,
+                "default_from_email": settings.DEFAULT_FROM_EMAIL,
+            },
+        )
+        raise
 
 
 def verify_token(token: str, purpose: str) -> tuple[bool, str]:

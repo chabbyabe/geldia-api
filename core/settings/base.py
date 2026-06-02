@@ -12,17 +12,17 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from __future__ import annotations
 
-import hashlib
 import os
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Final, TypedDict
+from typing import Final, TypedDict
 from urllib.parse import urljoin
 
 from decouple import Csv, config
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
 BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent.parent
+
 
 class DatabaseSettings(TypedDict):
     ENGINE: str
@@ -36,17 +36,35 @@ class DatabaseSettings(TypedDict):
 class DatabaseConfig(TypedDict):
     default: DatabaseSettings
 
+
+def config_bool(key: str, default: bool = False) -> bool:
+    value = config(key, default=default)
+    if isinstance(value, bool):
+        return value
+
+    normalized_value = str(value).strip().lower()
+    if normalized_value in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if normalized_value in {"0", "false", "f", "no", "n", "off"}:
+        return False
+
+    try:
+        return bool(int(normalized_value))
+    except ValueError:
+        return default
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config(
     "SECRET_KEY",
-    default="django-insecure-&3!=grsf-$9vpp-*(3!vlnpz%3!cjt#t17ex-8ist+zd^mk&h0",
+    default="django-insecure-&3!=grsf-$9vpp-*(3!vlnpz%3!cjt#t17ex-8ist+z^m&h0",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=False, cast=bool)
+DEBUG = config_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost", cast=Csv())
 
@@ -116,7 +134,7 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 # Get database configuration based on the selected mode
 def get_database_config() -> DatabaseConfig:
-    if config("USE_POSTGRES", default=False, cast=bool):
+    if config_bool("USE_POSTGRES", default=False):
         return {
             "default": {
                 "ENGINE": "django.db.backends.postgresql_psycopg2",
@@ -147,16 +165,20 @@ DATABASES = get_database_config()
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": ("django.contrib.auth.password_validation."
+                 "UserAttributeSimilarityValidator"),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "NAME": ("django.contrib.auth.password_validation."
+                 "MinimumLengthValidator"),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+        "NAME": ("django.contrib.auth.password_validation."
+                 "CommonPasswordValidator"),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+        "NAME": ("django.contrib.auth.password_validation."
+                 "NumericPasswordValidator"),
     },
 ]
 
@@ -188,7 +210,8 @@ AUTH_USER_MODEL = "users.User"
 # REST framework settings
 
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination."
+                                 "PageNumberPagination"),
     "PAGE_SIZE": 15,
     "DATETIME_FORMAT": "%Y-%m-%d %I:%M %p",
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -224,27 +247,32 @@ EMAIL_BACKEND = config(
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@geldia.local")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL",
+                            default="noreply@geldia.local")
 SERVER_EMAIL = config("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
 EMAIL_HOST = config("EMAIL_HOST", default="localhost")
 EMAIL_PORT = config("EMAIL_PORT", default=25, cast=int)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=False, cast=bool)
-EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
+EMAIL_USE_TLS = config_bool("EMAIL_USE_TLS", default=False)
+EMAIL_USE_SSL = config_bool("EMAIL_USE_SSL", default=False)
 EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10, cast=int)
 API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:8000")
 APP_URL = config("APP_URL", default="http://127.0.0.1:3000")
-REGISTRATION_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/register/verify/")
-REGISTRATION_MANUAL_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/email/manual-verify/")
-PASSWORD_CHANGE_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/password/change/verify/")
-PASSWORD_CHANGE_MANUAL_VERIFY_URL = urljoin(API_BASE_URL, "/api/users/auth/password/change/manual-verify/")
+REGISTRATION_VERIFY_URL = urljoin(
+    API_BASE_URL, "/api/users/auth/register/verify/")
+REGISTRATION_MANUAL_VERIFY_URL = urljoin(
+    API_BASE_URL, "/api/users/auth/email/manual-verify/")
+PASSWORD_CHANGE_VERIFY_URL = urljoin(
+    API_BASE_URL, "/api/users/auth/password/change/verify/")
+PASSWORD_CHANGE_MANUAL_VERIFY_URL = urljoin(
+    API_BASE_URL, "/api/users/auth/password/change/manual-verify/")
 
 # CORS Headers	# CORS Headers
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS", default="http://localhost:8080", cast=Csv()
 )
-CORS_ALLOW_CREDENTIALS = config("CORS_ALLOW_CREDENTIALS", default=False, cast=bool)
+CORS_ALLOW_CREDENTIALS = config_bool("CORS_ALLOW_CREDENTIALS", default=False)
 
 CORS_ALLOW_METHODS = [
     "DELETE",

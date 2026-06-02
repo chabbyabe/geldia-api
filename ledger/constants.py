@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum
+
 
 @dataclass(frozen=True)
 class TxnType:
@@ -7,17 +7,20 @@ class TxnType:
     EXPENSES: str = "Expenses"
     TRANSFER: str = "Transfer"
 
+
 @dataclass(frozen=True)
 class UserAction:
     CREATE: str = "created"
     UPDATE: str = "updated"
     DELETE: str = "deleted"
 
+
 ACTION_CHOICES: tuple[tuple[str, str], ...] = (
     (UserAction.CREATE, "Created"),
     (UserAction.UPDATE, "Updated"),
     (UserAction.DELETE, "Deleted"),
 )
+
 
 @dataclass(frozen=True)
 class DateRange:
@@ -27,11 +30,21 @@ class DateRange:
     CUSTOM: str = "Custom"
 
 
-MONTHS : dict[int, str] = {
+class DefaultColors:
+    PRIMARY: str = "#006CD1"
+    SECONDARY: str = "#0053A3"
+    SUCCESS: str = "#2EB872"
+    WARNING: str = "#F5A524"
+    ERROR: str = "#E5484D"
+    INFO: str = "#4DA3FF"
+
+
+MONTHS: dict[int, str] = {
     1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
     5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
     9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
 }
+
 
 @dataclass(frozen=True)
 class BaseFilterType:
@@ -42,6 +55,7 @@ class BaseFilterType:
     TAG: str = "Tag"
     PLACE: str = "Place"
     STORE: str = "Store"
+
 
 # Transaction Import
 IMPORT_TXN_HEADER_ALIASES: dict[str, str] = {

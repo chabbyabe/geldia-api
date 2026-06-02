@@ -9,21 +9,32 @@ from users.models import Company, EmailVerification
 
 
 class TestDJRestAuthIntegration:
+    def _lines_from_last_email(self) -> list[str]:
+        return [
+            line.strip()
+            for line in mail.outbox[-1].body.strip().splitlines()
+        ]
+
+    def _link_from_last_email(self, path_fragment: str) -> str:
+        for line in self._lines_from_last_email():
+            if path_fragment in line:
+                return line
+
+        raise AssertionError(
+            f"Could not find link containing '{path_fragment}' in email body."
+        )
+
     def _token_from_last_email(self) -> str:
-        body = mail.outbox[-1].body.strip().splitlines()
-        return body[-1].strip()
+        return self._lines_from_last_email()[-1]
 
     def _verification_link_from_last_email(self) -> str:
-        body = mail.outbox[-1].body.strip().splitlines()
-        return body[2].strip()
+        return self._link_from_last_email("/verify/")
 
     def _manual_verification_link_from_last_email(self) -> str:
-        body = mail.outbox[-1].body.strip().splitlines()
-        return body[6].strip()
+        return self._link_from_last_email("/email/manual-verify/")
 
     def _password_change_manual_verification_link_from_last_email(self) -> str:
-        body = mail.outbox[-1].body.strip().splitlines()
-        return body[6].strip()
+        return self._link_from_last_email("/password/change/manual-verify/")
 
     def test_login_success(self, client):
         """
@@ -83,7 +94,9 @@ class TestDJRestAuthIntegration:
         assert response.status_code == http_client.BAD_REQUEST
         assert response["content-type"] == "application/json"
 
-    def test_register_sends_verification_email_and_creates_inactive_user(self, client):
+    def test_register_sends_verification_email_and_creates_inactive_user(
+        self, client
+    ):
         response = client.post(
             reverse("rest_register"),
             {
@@ -98,15 +111,23 @@ class TestDJRestAuthIntegration:
         )
 
         assert response.status_code == http_client.CREATED
-        assert response.data["detail"] == "Registration successful. Verify your email to activate your account."
+        assert (
+            response.data["detail"] == "Registration successful. Verify your "
+            "email to activate your account."
+        )
         assert len(mail.outbox) == 1
         verification_link = self._verification_link_from_last_email()
-        manual_verification_link = self._manual_verification_link_from_last_email()
+        manual_verification_link = (
+            self._manual_verification_link_from_last_email()
+        )
         parsed_link = urlparse(verification_link)
         manual_parsed_link = urlparse(manual_verification_link)
 
         assert parsed_link.path == "/api/users/auth/register/verify/"
-        assert manual_parsed_link.path == "/api/users/auth/email/manual-verify/"
+        assert (
+            manual_parsed_link.path
+            == "/api/users/auth/email/manual-verify/"
+        )
         assert parse_qs(parsed_link.query)["token"]
 
         user = factories.User._meta.model.objects.get(username="verifyme")
@@ -146,7 +167,10 @@ class TestDJRestAuthIntegration:
         assert user.is_active is True
         assert user.email_verified_at is not None
 
-        login_response = client.authenticate_user("verifieduser", "StrongPassword123!")
+        login_response = client.authenticate_user(
+            "verifieduser",
+            "StrongPassword123!",
+        )
         assert login_response.status_code == http_client.OK
 
     def test_register_verify_link_activates_user(self, client):
@@ -189,7 +213,9 @@ class TestDJRestAuthIntegration:
         assert 'name="token"' in response.content.decode()
         assert "Open Geldia Web" in response.content.decode()
 
-    def test_register_verify_link_with_invalid_token_renders_error_page(self, client):
+    def test_register_verify_link_with_invalid_token_renders_error_page(
+        self, client
+    ):
         response = client.get(
             reverse("rest_register_verify"),
             {"token": "invalid-token"},
@@ -198,7 +224,10 @@ class TestDJRestAuthIntegration:
         assert response.status_code == http_client.BAD_REQUEST
         assert response["content-type"].startswith("text/html")
         assert "Verification Failed" in response.content.decode()
-        assert "Invalid or expired verification token." in response.content.decode()
+        assert (
+            "Invalid or expired verification token."
+            in response.content.decode()
+        )
 
     def test_email_manual_verify_page_redirects_token_submission(self, client):
         client.post(
@@ -221,9 +250,13 @@ class TestDJRestAuthIntegration:
         )
 
         assert response.status_code == http_client.FOUND
-        assert response["Location"].endswith(f"/api/users/auth/register/verify/?token={token}")
+        assert response["Location"].endswith(
+            f"/api/users/auth/register/verify/?token={token}"
+        )
 
-    def test_register_rolls_back_when_email_send_fails(self, client, monkeypatch):
+    def test_register_rolls_back_when_email_send_fails(
+        self, client, monkeypatch
+    ):
         def failing_send_mail(*args, **kwargs):
             raise RuntimeError("SMTP unavailable")
 
@@ -243,7 +276,9 @@ class TestDJRestAuthIntegration:
                 format="json",
             )
 
-        assert not factories.User._meta.model.objects.filter(username="mailfailure").exists()
+        assert not factories.User._meta.model.objects.filter(
+            username="mailfailure"
+        ).exists()
         assert not EmailVerification.objects.filter(
             user__username="mailfailure",
             purpose=EmailVerification.Purpose.REGISTRATION,
@@ -390,11 +425,17 @@ class TestDJRestAuthIntegration:
 
     def test_change_password_success(self, client):
         password = "currentP@ssword"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
         client.authenticate_user(user.username, password)
 
         url = reverse("rest_password_change")
-        data = {"new_password_1": "newP@ssW0rd!123", "new_password2": "newP@ssW0rd!123"}
+        data = {
+            "new_password_1": "newP@ssW0rd!123",
+            "new_password2": "newP@ssW0rd!123",
+        }
 
         response = client.post(url, data)
 
@@ -411,7 +452,10 @@ class TestDJRestAuthIntegration:
 
     def test_forgot_password_verify_link_updates_password(self, client):
         password = "currentP@ssword"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
 
         client.post(
             reverse("rest_password_forgot"),
@@ -438,13 +482,20 @@ class TestDJRestAuthIntegration:
         new_login = client.authenticate_user(user.username, "newP@ssW0rd!123")
         assert new_login.status_code == http_client.OK
 
-    def test_password_change_verify_page_without_token_redirects_to_manual_page(self, client):
+    def test_password_change_verify_redirects_to_manual_page_without_token(
+        self,
+        client,
+    ):
         response = client.get(reverse("rest_password_change_verify"))
 
         assert response.status_code == http_client.FOUND
-        assert response["Location"].endswith("/api/users/auth/password/change/manual-verify/")
+        assert response["Location"].endswith(
+            "/api/users/auth/password/change/manual-verify/"
+        )
 
-    def test_password_change_manual_verify_page_renders_manual_form(self, client):
+    def test_password_change_manual_verify_page_renders_manual_form(
+        self, client
+    ):
         response = client.get(reverse("rest_password_change_manual_verify"))
 
         assert response.status_code == http_client.OK
@@ -452,7 +503,9 @@ class TestDJRestAuthIntegration:
         assert "Enter your verification token." in response.content.decode()
         assert 'name="token"' in response.content.decode()
 
-    def test_password_change_verify_link_with_invalid_token_renders_error_page(self, client):
+    def test_password_change_verify_link_with_invalid_token_renders_error_page(
+        self, client
+    ):
         response = client.get(
             reverse("rest_password_change_verify"),
             {"token": "invalid-token"},
@@ -461,11 +514,19 @@ class TestDJRestAuthIntegration:
         assert response.status_code == http_client.BAD_REQUEST
         assert response["content-type"].startswith("text/html")
         assert "Verification Failed" in response.content.decode()
-        assert "Invalid or expired verification token." in response.content.decode()
+        assert (
+            "Invalid or expired verification token."
+            in response.content.decode()
+        )
 
-    def test_forgot_password_email_contains_manual_verification_page(self, client):
+    def test_forgot_password_email_contains_manual_verification_page(
+        self, client
+    ):
         password = "currentP@ssword"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
 
         response = client.post(
             reverse("rest_password_forgot"),
@@ -476,16 +537,29 @@ class TestDJRestAuthIntegration:
             },
         )
 
-        manual_verification_link = self._password_change_manual_verification_link_from_last_email()
+        manual_verification_link = (
+            self._password_change_manual_verification_link_from_last_email()
+        )
         parsed_link = urlparse(manual_verification_link)
 
         assert response.status_code == http_client.OK
-        assert response.data["detail"] == "Password reset verification email sent."
-        assert parsed_link.path == "/api/users/auth/password/change/manual-verify/"
+        assert (
+            response.data["detail"]
+            == "Password reset verification email sent."
+        )
+        assert (
+            parsed_link.path
+            == "/api/users/auth/password/change/manual-verify/"
+        )
 
-    def test_password_change_manual_verify_page_redirects_token_submission(self, client):
+    def test_password_change_manual_verify_page_redirects_token_submission(
+        self, client
+    ):
         password = "currentP@ssword"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
 
         client.post(
             reverse("rest_password_forgot"),
@@ -503,7 +577,9 @@ class TestDJRestAuthIntegration:
         )
 
         assert response.status_code == http_client.FOUND
-        assert response["Location"].endswith(f"/api/users/auth/password/change/verify/?token={token}")
+        assert response["Location"].endswith(
+            f"/api/users/auth/password/change/verify/?token={token}"
+        )
 
     def test_forgot_password_fails_for_unknown_email(self, client):
         response = client.post(
@@ -516,11 +592,16 @@ class TestDJRestAuthIntegration:
         )
 
         assert response.status_code == http_client.BAD_REQUEST
-        assert response.data["email"] == ["No user found with this email address."]
+        assert response.data["email"] == [
+            "No user found with this email address."
+        ]
 
     def test_change_password_fails(self, client):
         password = "P@s$W0rd!"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
         auth_response = client.authenticate_user(user.username, password)
         access_token = auth_response.data["access"]
 
@@ -539,7 +620,10 @@ class TestDJRestAuthIntegration:
 
     def test_password_change_verify_with_invalid_token_fails(self, client):
         password = "P@s$W0rd!"
-        user = factories.User(password=password, email_verified_at=timezone.now())
+        user = factories.User(
+            password=password,
+            email_verified_at=timezone.now(),
+        )
         client.authenticate_user(user.username, password)
 
         response = client.post(
@@ -549,11 +633,15 @@ class TestDJRestAuthIntegration:
         )
 
         assert response.status_code == http_client.BAD_REQUEST
-        assert response.data["detail"] == "Invalid or expired verification token."
+        assert (
+            response.data["detail"]
+            == "Invalid or expired verification token."
+        )
 
     def test_token_verify_success(self, client):
         """
-        Given: A currently logged-in user tries to check if their valid token is valid
+        Given: A currently logged-in user tries to check whether their valid
+        token is still valid
         Expect: An OK response that means the token is valid
         """
 

@@ -3,25 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from ledger.models import Transaction
-from django.db.models import F, Sum
-from ledger.constants import TxnType, MONTHS
+from django.db.models import Sum
+from ledger.constants import TxnType, MONTHS, DefaultColors
 from django.db.models.functions import TruncMonth
 import calendar
 from ledger.serializers.reports import ReportParamRequestSerializer, \
     IncomeReportResponseSerializer, ExpensesReportSerializer
+from ledger.utils import normalize_category
 
-def normalize_category(name):
-    if not name:
-        return "other"
-    return name.strip().lower()
-
-class ReportViewSet(ViewSet):
-    permission_classes = [IsAuthenticated]
-
-def normalize_category(name):
-    if not name:
-        return "other"
-    return name.strip().lower()
 
 class ReportViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
@@ -86,8 +75,10 @@ class ReportViewSet(ViewSet):
             })
 
         # Split the data by year
-        selected_data = [v for k, v in result.items() if k.startswith(str(selected_year))]
-        compare_data = [v for k, v in result.items() if k.startswith(str(compare_year))]
+        selected_data = [v for k, v in result.items() if
+                         k.startswith(str(selected_year))]
+        compare_data = [v for k, v in result.items() if
+                        k.startswith(str(compare_year))]
 
         response_data = {
             "selected_year": selected_year,
@@ -118,7 +109,10 @@ class ReportViewSet(ViewSet):
 
         data = (
             qs.annotate(date=TruncMonth("transaction_date"))
-            .values("date", "category__name")
+            .values("date",
+                    "category__name",
+                    "category__color",
+                    "category__parent_category__name")
             .annotate(total=Sum("amount"))
             .order_by("date")
         )
@@ -128,7 +122,7 @@ class ReportViewSet(ViewSet):
                 month_num: {
                     "month": month_num,
                     "date": month_name,
-                    "categories": {},
+                    "parent_categories": {},
                     "total": 0
                 }
                 for month_num, month_name in MONTHS.items()
@@ -142,6 +136,9 @@ class ReportViewSet(ViewSet):
             year = row["date"].year
             raw_category = row["category__name"]
             category = normalize_category(raw_category).title()
+            category_color = row["category__color"]
+            parent_categories = normalize_category(
+                row["category__parent_category__name"]).title()
             total = row["total"] or 0
 
             # choose correct bucket
@@ -153,8 +150,20 @@ class ReportViewSet(ViewSet):
                 continue
 
             month_data = target[month_num]
-            month_data["categories"].setdefault(category, 0)
-            month_data["categories"][category] += total
+            month_data["parent_categories"].setdefault(parent_categories, {
+                "categories": {},
+                "total": 0
+            })
+
+            parent_data = month_data["parent_categories"][parent_categories]
+
+            parent_data["categories"].setdefault(category, {
+                "amount": 0,
+                "color": category_color or DefaultColors.PRIMARY
+            })
+
+            parent_data["categories"][category]["amount"] += total
+            parent_data["total"] += total
             month_data["total"] += total
 
         base_data = sorted(base_result.values(), key=lambda x: x["month"])
@@ -167,7 +176,8 @@ class ReportViewSet(ViewSet):
         return Response({
             "selected_year": selected_year,
             "compare_year": compare_year,
-            "base_data": ExpensesReportSerializer(base_data, many=True).data,
-            "compare_data": ExpensesReportSerializer(compare_data, many=True).data if compare_data else None,
+            "base_data": base_data,
+            "compare_data": ExpensesReportSerializer(
+                compare_data, many=True).data if compare_data else None,
         }, status=200)
 

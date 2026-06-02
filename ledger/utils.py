@@ -18,6 +18,7 @@ TModel = TypeVar("TModel", bound=Model)
 JSONScalar = str | int | float | bool | None
 JSONValue = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
 
+
 def smart_title(name: str) -> str:
     words = name.strip().split()
 
@@ -29,6 +30,12 @@ def smart_title(name: str) -> str:
 
 def normalize_import_header(header: str) -> str:
     return " ".join(header.strip().lower().split())
+
+
+def normalize_category(name):
+    if not name:
+        return "other"
+    return name.strip().lower()
 
 
 def parse_import_decimal(value: str | None) -> Decimal | None:
@@ -58,6 +65,7 @@ def parse_import_date(value: str | None) -> datetime | None:
             continue
 
     return None
+
 
 def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
     """
@@ -102,7 +110,8 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
         raise ValueError("The uploaded file is missing a header row.")
 
     normalized_headers = {
-        header: IMPORT_TXN_HEADER_ALIASES.get(normalize_import_header(header), header)
+        header: IMPORT_TXN_HEADER_ALIASES.get(
+            normalize_import_header(header), header)
         for header in reader.fieldnames
         if header is not None
     }
@@ -111,7 +120,8 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
 
     for index, row in enumerate(reader, start=1):
         mapped_row = {
-            normalized_headers.get(key, key): (value.strip() if isinstance(value, str) else value)
+            normalized_headers.get(
+                key, key): (value.strip() if isinstance(value, str) else value)
             for key, value in row.items()
             if key is not None
         }
@@ -124,13 +134,15 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
         amount = parse_import_decimal(mapped_row.get("amount"))
         transfer_type = (mapped_row.get("transfer_type") or "").strip().lower()
         balance_after = parse_import_decimal(mapped_row.get("balance_after"))
-        
+
         if not transaction_at or amount is None:
             continue
 
-        # Check the notes if it contains an Oranje spaarrekening then if exists get the account number
+        # Check the notes if it contains an Oranje spaarrekening
+        # then if exists get the account number
         notes = mapped_row.get("notes", "")
-        match = re.search(r"(?:Oranje spaarrekening|Beleggingsrek.)\s+(\S+)", notes)
+        match = re.search(r"(?:Oranje spaarrekening|Beleggingsrek.)\s+(\S+)",
+                          notes)
         savings_account = match.group(1) if match else None
         is_savings_credit = False
         # Set transaction type
@@ -156,7 +168,8 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
                 "code": code,
                 "transfer_type": transfer_type,
                 "balance_after": balance_after,
-                "counterparty_account": mapped_row.get("counterparty_account") or "",
+                "counterparty_account": mapped_row.get(
+                    "counterparty_account") or "",
                 "account_number": mapped_row.get("account_number") or "",
                 "tag": mapped_row.get("tag") or "",
                 "savings_account": savings_account,
@@ -165,6 +178,7 @@ def parse_transaction_import_file(uploaded_file: Any) -> list[dict[str, Any]]:
         )
 
     return rows
+
 
 def get_or_create_instance(
     model: type[TModel],
@@ -197,6 +211,7 @@ def get_or_create_instance(
 
     return model.objects.create(**kwargs)
 
+
 def clear_validated_keys(
     validated_data: dict[str, Any],
     keys_to_clear: list[str],
@@ -205,7 +220,7 @@ def clear_validated_keys(
     Sets the specified keys in validated_data to None if they exist.
 
     Args:
-        validated_data (Dict[str, Any]): Serializer's validated_data dictionary.
+        validated_data (Dict[str, Any]): Serializer's validated_data dict.
         keys_to_clear (List[str]): List of keys to reset to None.
 
     Returns:
@@ -216,7 +231,8 @@ def clear_validated_keys(
             validated_data[key] = None
 
 
-def serialize_for_json(data: dict[str, Any] | None) -> dict[str, JSONValue] | None:
+def serialize_for_json(
+        data: dict[str, Any] | None) -> dict[str, JSONValue] | None:
     """
     Convert Decimal and date/datetime values
     to JSON-serializable formats.
@@ -245,8 +261,10 @@ def get_date_range(
 ) -> tuple[date | datetime | None, date | datetime | None]:
 
     try:
-        start_date = timezone.make_aware(timezone.datetime.strptime(start_date, "%Y-%m-%d")) if start_date else None
-        end_date = timezone.make_aware(timezone.datetime.strptime(end_date, "%Y-%m-%d")) if end_date else None
+        start_date = timezone.make_aware(timezone.datetime.strptime(
+            start_date, "%Y-%m-%d")) if start_date else None
+        end_date = timezone.make_aware(timezone.datetime.strptime(
+            end_date, "%Y-%m-%d")) if end_date else None
     except ValueError:
         start_date = end_date = None
 

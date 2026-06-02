@@ -1,0 +1,28 @@
+services:
+  geldia-api:
+    build: .
+    container_name: geldia-api-container
+    restart: always
+    expose:
+      - "8888"
+    env_file:
+      - .env.production
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+  nginx:
+    image: nginx:alpine
+    container_name: geldia-nginx-container
+    restart: always
+    ports:
+      - "8888:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/api/staticfiles
+      - media_volume:/api/media
+    depends_on:
+      - geldia-api
+
+volumes:
+  static_volume:
+  media_volume:

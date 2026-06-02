@@ -32,14 +32,14 @@ jobs:
         if: steps.gate.outputs.deploy == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install Poetry
         if: steps.gate.outputs.deploy == 'true'
         run: |
-          pip install poetry
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-      # 🚀 Deploy via SSH
       - name: Deploy to server
         if: steps.gate.outputs.deploy == 'true'
         uses: appleboy/ssh-action@v1.0.3
@@ -49,19 +49,41 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.WORK_DIR }}
+            set -e
 
-            echo "Pull latest code"
-            git pull origin ${{ secrets.MAIN_BRANCH }}
+            echo "Go to project directory"
+            cd "${{ secrets.WORK_DIR }}" || exit 1
 
-            echo "Install Poetry if missing"
-            command -v poetry || pip install poetry
+            echo "Check current directory"
+            pwd
+            ls -la
+
+            echo "Check git repo"
+            git status
+
+            git fetch origin "${{ secrets.MAIN_BRANCH }}"
+            git reset --hard "origin/${{ secrets.MAIN_BRANCH }}"
+
+            echo "Check Python 3.10"
+            python3.10 --version
+
+            echo "Install/Fix Poetry for Python 3.10"
+            python3.10 -m pip install --upgrade pip
+            python3.10 -m pip install --upgrade --force-reinstall poetry
+
+            echo "Check Poetry"
+            python3.10 -m poetry --version
+
+            echo "Use Python 3.10 for Poetry env"
+            python3.10 -m poetry env use python3.10
 
             echo "Install dependencies"
-            poetry install --no-interaction --no-root
+            python3.10 -m poetry install --no-interaction --no-root
 
             echo "Run migrations"
-            poetry run python manage.py migrate || true
+            python3.10 -m poetry run python manage.py migrate
 
             echo "Collect static"
-            poetry run python manage.py collectstatic --noinput || true
+            python3.10 -m poetry run python manage.py collectstatic --noinput
+
+            echo "Deployment completed"

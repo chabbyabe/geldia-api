@@ -107,7 +107,7 @@ class TestTransactionViewSet:
                 "transaction_type_id": transfer.id,
                 "name": "Move to savings",
                 "amount": "125.00",
-                "pair_transaction": to_account.id,
+                "pair_account": to_account.id,
                 "transaction_at": "2026-01-15T12:00:00Z",
                 "tags_names": [],
             },
@@ -124,7 +124,7 @@ class TestTransactionViewSet:
 
         transaction = Transaction.objects.get(name="Move to savings")
         assert transaction.account_id == from_account.id
-        assert transaction.pair_transaction_id == to_account.id
+        assert transaction.pair_account_id == to_account.id
 
     def test_import_transactions_creates_income_and_expense_rows(self, client):
         user = self._auth(client, username="txn_import_user")

@@ -19,7 +19,8 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Seed database with initial data (transaction types, categories, places, stores, tags)"
+    help = "Seed database with initial data " \
+        "(transaction types, categories, places, stores, tags)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -94,7 +95,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Places imported successfully"))
 
-
     # -------------
     # STORES
     # -------------
@@ -168,15 +168,19 @@ class Command(BaseCommand):
             raise CommandError(f"User with id {created_by_id} does not exist.")
 
         users = list(
-            User.objects.order_by("id").values("id", "username", "email", "first_name", "last_name")
+            User.objects.order_by("id").values(
+                "id", "username", "email", "first_name", "last_name")
         )
 
         if not users:
-            raise CommandError("No users found. Create a user before seeding categories.")
+            raise CommandError("No users found. Create a user " +
+                               "before seeding categories.")
 
-        self.stdout.write("Select the user to assign as created_by for imported categories:")
+        self.stdout.write("Select the user to assign as created_by for " +
+                          "imported categories:")
         for user in users:
-            full_name = f'{user["first_name"]} {user["last_name"]}'.strip() or "-"
+            full_name = f'{user["first_name"]} {user["last_name"]}'.strip() \
+                  or "-"
             username = user["username"] or "-"
             email = user["email"] or "-"
             self.stdout.write(
@@ -188,10 +192,12 @@ class Command(BaseCommand):
             parsed_id = self.parse_int(value)
 
             if parsed_id is None:
-                self.stdout.write(self.style.WARNING("Please enter a valid user id."))
+                self.stdout.write(self.style.WARNING(
+                    "Please enter a valid user id."))
                 continue
 
             if User.objects.filter(id=parsed_id).exists():
                 return parsed_id
 
-            self.stdout.write(self.style.WARNING(f"User with id {parsed_id} does not exist."))
+            self.stdout.write(self.style.WARNING(
+                f"User with id {parsed_id} does not exist."))

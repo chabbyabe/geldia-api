@@ -50,6 +50,7 @@ class TransactionQuerySet(models.QuerySet):
         )
 
     def by_category_totals(self):
+        
         return (
             self.values(
                 "category__name",

@@ -35,7 +35,7 @@ class ReportViewSet(ViewSet):
 
         data = (
             qs.annotate(month=TruncMonth("debit_month_year"))
-            .values("month", "store__name")
+            .values("month", "name", "category__name", "category__color")
             .annotate(
                 gross_amount=Sum("gross_amount"),
                 net_amount=Sum("net_amount")
@@ -69,7 +69,10 @@ class ReportViewSet(ViewSet):
             bucket["net_amount"] += net
 
             bucket["companies"].append({
-                "name": row["store__name"] or "-",
+                "name": row["name"] or "-",
+                "category_name": row["category__name"] or "-",
+                "category_color": row["category__color"]
+                or DefaultColors.PRIMARY,
                 "gross_amount": gross,
                 "net_amount": net,
             })

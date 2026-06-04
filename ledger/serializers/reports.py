@@ -46,6 +46,8 @@ class ReportParamRequestSerializer(serializers.Serializer):
 
 class IncomeCompanySerializer(serializers.Serializer):
     name = serializers.CharField()
+    category_name = serializers.CharField()
+    category_color = serializers.CharField()
     gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     net_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
 

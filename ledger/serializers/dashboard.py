@@ -1,7 +1,4 @@
 from __future__ import annotations
-
-from typing import Any
-
 from rest_framework import serializers
 from django.utils import timezone
 
@@ -11,7 +8,8 @@ class SummaryOverviewSerializer(serializers.Serializer):
     icon = serializers.CharField()
     color = serializers.CharField()
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    
+
+
 class YearOverviewQuerySerializer(serializers.Serializer):
     year = serializers.IntegerField(required=False)
 

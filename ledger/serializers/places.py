@@ -5,6 +5,7 @@ from rest_framework import serializers
 from ledger.models import Place
 from users.serializers import UserSimpleSerializer
 
+
 class PlaceSerializer(serializers.ModelSerializer):
     created_by = UserSimpleSerializer(read_only=True)
     updated_by = UserSimpleSerializer(read_only=True)
@@ -35,6 +36,7 @@ class PlaceSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Place already exists.")
 
         return attrs
+
 
 class PlaceSimpleSerializer(serializers.ModelSerializer):
     class Meta:

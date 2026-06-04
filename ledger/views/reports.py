@@ -180,4 +180,3 @@ class ReportViewSet(ViewSet):
             "compare_data": ExpensesReportSerializer(
                 compare_data, many=True).data if compare_data else None,
         }, status=200)
-

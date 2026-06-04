@@ -4,13 +4,15 @@ from typing import Any, Callable
 
 from rest_framework import serializers
 
-from ledger.models import Category, Place, Store, Tag, Transaction, TransactionType
+from ledger.models import Category, Place, Store, Tag, \
+    Transaction, TransactionType
 from ledger.serializers.accounts import AccountSimpleSerializer
 from ledger.serializers.categories import CategorySimpleSerializer
 from ledger.serializers.places import PlaceSimpleSerializer
 from ledger.serializers.stores import StoreSimpleSerializer
 from ledger.serializers.tags import TagSimpleSerializer
-from ledger.serializers.transaction_types import TransactionTypeSimpleSerializer
+from ledger.serializers.transaction_types \
+    import TransactionTypeSimpleSerializer
 from ledger.utils import get_or_create_instance
 from users.models import Account, User
 from users.serializers import UserSimpleSerializer
@@ -22,7 +24,8 @@ class CreateIfNotExistsRelatedField(serializers.PrimaryKeyRelatedField):
         self,
         queryset: Any,
         slug_field: str = "name",
-        extra_create_data: Callable[[], dict[str, Any] | None] | dict[str, Any] | None = None,
+        extra_create_data: Callable[[], dict[str, Any]
+                                    | None] | dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -33,7 +36,7 @@ class CreateIfNotExistsRelatedField(serializers.PrimaryKeyRelatedField):
         super().__init__(queryset=queryset, **kwargs)
 
     def to_internal_value(self, data: Any) -> Any:
-        
+
         if isinstance(data, str):
             defaults = {}
 
@@ -62,8 +65,10 @@ class CreateIfNotExistsRelatedField(serializers.PrimaryKeyRelatedField):
                 )
 
             return obj
-        
-        raise serializers.ValidationError(f"Invalid value for {self.slug_field}")
+
+        raise serializers.ValidationError(
+            f"Invalid value for {self.slug_field}")
+
 
 class TransactionSerializer(serializers.ModelSerializer):
     user = UserSimpleSerializer(read_only=True)
@@ -71,24 +76,24 @@ class TransactionSerializer(serializers.ModelSerializer):
     category = CategorySimpleSerializer(read_only=True)
     place = PlaceSimpleSerializer(read_only=True)
     account = AccountSimpleSerializer(read_only=True)
-    pair_transaction = AccountSimpleSerializer(read_only=True)
+    pair_account = AccountSimpleSerializer(read_only=True)
     transaction_type = TransactionTypeSimpleSerializer(read_only=True)
     tags = TagSimpleSerializer(many=True, read_only=True)
 
     # ID fields for writes
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
-        write_only=True, 
+        write_only=True,
         source="user"
     )
     account_id = serializers.PrimaryKeyRelatedField(
-        queryset=Account.objects.filter(deleted_at__isnull=True), 
-        write_only=True, 
+        queryset=Account.objects.filter(deleted_at__isnull=True),
+        write_only=True,
         source="account"
     )
     transaction_type_id = serializers.PrimaryKeyRelatedField(
         queryset=TransactionType.objects.all(),
-        write_only=True, 
+        write_only=True,
         source="transaction_type"
     )
     category_name = CreateIfNotExistsRelatedField(
@@ -100,7 +105,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     store_name = CreateIfNotExistsRelatedField(
-        queryset=Store.objects.filter(deleted_at__isnull=True), 
+        queryset=Store.objects.filter(deleted_at__isnull=True),
         slug_field="name",
         write_only=True,
         extra_create_data=lambda: None,
@@ -130,29 +135,33 @@ class TransactionSerializer(serializers.ModelSerializer):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # Bind the callable dynamically at runtime
-        self.fields["category_name"].extra_create_data = self._category_extra_data
+        self.fields[
+            "category_name"].extra_create_data = self._category_extra_data
         self.fields["place_name"].extra_create_data = self._place_extra_data
         self.fields["store_name"].extra_create_data = self._store_extra_data
 
     def _category_extra_data(self) -> dict[str, Any]:
         transaction_type_id = self.initial_data.get("transaction_type_id")
         if not transaction_type_id:
-            raise serializers.ValidationError("transaction_type_id is required to create category")
+            raise serializers.ValidationError(
+                "transaction_type_id is required to create category")
 
         # Convert ID to instance
         try:
-            transaction_type = TransactionType.objects.get(id=transaction_type_id)
+            transaction_type = TransactionType.objects.get(
+                id=transaction_type_id)
         except TransactionType.DoesNotExist:
             raise serializers.ValidationError("Invalid transaction_type_id")
 
-        return {"transaction_type": transaction_type, "created_by": self.context["request"].user}
+        return {"transaction_type": transaction_type,
+                "created_by": self.context["request"].user}
 
     def _store_extra_data(self) -> dict[str, Any]:
         return {"created_by": self.context["request"].user}
-    
+
     def _place_extra_data(self) -> dict[str, Any]:
         return {"created_by": self.context["request"].user}
-    
+
     def _extract_related_data(self, validated_data):
         return {
             "category": validated_data.pop("category_name", None),
@@ -167,7 +176,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         if related_data["store"]:
             transaction.store = related_data["store"]
-        else: 
+        else:
             transaction.store = None
 
         if related_data["place"]:
@@ -190,20 +199,21 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         transaction.save()
         return transaction
-    
+
     def _user_can_access_account(self, account, user):
-        return account.user_id == user.id or account.shared_users.filter(pk=user.pk).exists()
-       
+        return account.user_id == user.id or account.shared_users.filter(
+            pk=user.pk).exists()
+
     def validate_account_id(self, value):
         user = self.context["request"].user
         # User can only access own account and accounts shared with them
         if not self._user_can_access_account(value, user):
             raise ValidationError("Invalid account(s)")
         return value
-        
+
     def validate(self, attrs):
         account = attrs.get("account")
-        pair_account = attrs.get("pair_transaction")
+        pair_account = attrs.get("pair_account")
 
         if account and pair_account and account.pk == pair_account.pk:
             raise ValidationError("Cannot transfer to same account")

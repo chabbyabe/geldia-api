@@ -13,6 +13,7 @@ class MUIBaseFilterBackend(BaseFilterBackend):
     json_field = None  # e.g. "new_data"
 
     def filter_queryset(self, request, queryset, view):
+        queryset = self.apply_account_filters(request, queryset)
         queryset = self.apply_mui_filters(request, queryset)
         queryset = self.apply_date_filters(request, queryset)
         return queryset
@@ -75,7 +76,6 @@ class MUIBaseFilterBackend(BaseFilterBackend):
 
         return queryset.filter(q_objects)
 
-
     def build_condition(self, field, operator, value):
         lookup_map = {
             "contains": "icontains",
@@ -109,10 +109,13 @@ class MUIBaseFilterBackend(BaseFilterBackend):
                 return Q(**{django_field: value})
 
             if operator == "isEmpty":
-                return Q(**{f"{django_field}__isnull": True}) | Q(**{django_field: ""})
+                return Q(**{
+                    f"{django_field}__isnull": True}) | Q(**{django_field: ""})
 
             if operator == "isNotEmpty":
-                return ~Q(**{f"{django_field}__isnull": True}) & ~Q(**{django_field: ""})
+                return ~Q(**{
+                    f"{django_field}__isnull": True}) & ~Q(**{
+                        django_field: ""})
 
             return Q()
 
@@ -124,16 +127,13 @@ class MUIBaseFilterBackend(BaseFilterBackend):
 
             return Q(**{f"{field}__{numeric_map[operator]}": value})
 
-
         if operator in lookup_map:
             return Q(**{f"{field}__{lookup_map[operator]}": value})
-
 
         if operator == "=":
             return Q(**{field: value})
 
         return Q()
-
 
     def apply_date_filters(self, request, queryset):
         if not self.date_field:
@@ -166,3 +166,12 @@ class MUIBaseFilterBackend(BaseFilterBackend):
             })
 
         return queryset
+
+    def apply_account_filters(self, request, queryset):
+        account_id = request.query_params.get("accountId")
+        if not account_id:
+            return queryset
+        return queryset.filter(
+            Q(account__id=account_id) |
+            Q(pair_account_id=account_id)
+        )

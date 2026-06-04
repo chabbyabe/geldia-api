@@ -2,7 +2,7 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 import calendar
 from rest_framework import status
@@ -11,10 +11,12 @@ from rest_framework.exceptions import ValidationError
 from ledger.constants import DateRange, TxnType
 from ledger.models import Transaction
 from ledger.serializers.categories import CategoryOverviewSerializer
-from ledger.serializers.dashboard import SummaryOverviewSerializer, YearOverviewQuerySerializer
+from ledger.serializers.dashboard import SummaryOverviewSerializer, \
+    YearOverviewQuerySerializer
 from ledger.serializers.transactions import TransactionSerializer
 from ledger.utils import get_date_range
 from users.models import Account
+
 
 class DashboardViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
@@ -26,26 +28,30 @@ class DashboardViewSet(ViewSet):
             .visible_to(request.user)
             .order_by('-created_at')[:5]
         )
-        return Response(TransactionSerializer(transactions, many=True).data, status=status.HTTP_200_OK)
-
+        return Response(TransactionSerializer(
+            transactions, many=True).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path="category-overview")
     def category_overview(self, request):
         filter_type = request.query_params.get("filterBy")
-        start_date = filter_type == DateRange.CUSTOM and request.query_params.get("startDate") 
-        end_date = filter_type == DateRange.CUSTOM and request.query_params.get("endDate")
+        start_date = filter_type == DateRange.CUSTOM and \
+            request.query_params.get("startDate")
+        end_date = filter_type == DateRange.CUSTOM and \
+            request.query_params.get("endDate")
 
         start_date, end_date = get_date_range(
-            request, filter_type=filter_type, start_date=start_date, end_date=end_date
+            request, filter_type=filter_type,
+            start_date=start_date,
+            end_date=end_date
             )
 
         queryset = (
-            Transaction.objects
-                .visible_to(request.user)
-                .filter_by_transaction_type(TxnType.EXPENSES)
-                .filter_by_date_range(start_date, end_date)
+            Transaction.objects.visible_to(
+                request.user).filter_by_transaction_type(
+                    TxnType.EXPENSES).filter_by_date_range(
+                        start_date, end_date)
             )
-        
+
         categories = (queryset.by_category_totals())
 
         data = [
@@ -63,10 +69,10 @@ class DashboardViewSet(ViewSet):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
     @action(detail=False, methods=["get"], url_path="summary-overview")
     def summary_overview(self, request):
-        start_date, end_date = get_date_range(request, filter_type=DateRange.YEAR)
+        start_date, end_date = get_date_range(
+            request, filter_type=DateRange.YEAR)
 
         base_txn_qs = (
             Transaction.objects
@@ -98,7 +104,7 @@ class DashboardViewSet(ViewSet):
             or 0
         )
 
-        summary_overview : list = [
+        summary_overview: list = [
             {
                 "name": TxnType.INCOME,
                 "icon": "Savings", 
@@ -122,7 +128,6 @@ class DashboardViewSet(ViewSet):
         serializer = SummaryOverviewSerializer(summary_overview, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
     @action(detail=False, methods=['get'], url_path="year-overview")
     def year_overview(self, request):
@@ -170,16 +175,18 @@ class DashboardViewSet(ViewSet):
             for row in income_rows:
                 index = row["month"].month - 1
                 income_net_data[index] = float(row["net_amount_total"] or 0)
-                income_gross_data[index] = float(row["gross_amount_total"] or 0)
+                income_gross_data[index] = float(
+                    row["gross_amount_total"] or 0)
 
             for row in expenses_rows:
                 index = row["month"].month - 1
                 expense_data[index] = float(row["expenses_amount_total"] or 0)
 
         except Exception:
-            raise ValidationError({"error":"Failed to fetch year overview"})
+            raise ValidationError({
+                "error": "Failed to fetch year overview"})
 
-        data : list = [
+        data: list = [
             {
                 "name": income_name,
                 "label": months,

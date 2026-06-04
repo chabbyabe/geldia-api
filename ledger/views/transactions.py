@@ -3,14 +3,16 @@ from rest_framework.permissions import IsAuthenticated
 from core.pagination import CustomPageNumberPagination
 from rest_framework.response import Response
 from users.models import Account
-from ledger.models import Transaction, Tag, Category, Place, Store, TransactionType, TransactionLog
+from ledger.models import Transaction, Tag, Category, Place, Store, \
+    TransactionType, TransactionLog
 from ledger.serializers.transactions import TransactionSerializer
 from ledger.serializers.accounts import AccountSimpleSerializer
 from ledger.serializers.categories import CategorySimpleSerializer
 from ledger.serializers.tags import TagSimpleSerializer
 from ledger.serializers.places import PlaceSimpleSerializer
 from ledger.serializers.stores import StoreSimpleSerializer
-from ledger.serializers.transaction_types import TransactionTypeSimpleSerializer
+from ledger.serializers.transaction_types import \
+    TransactionTypeSimpleSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIBaseFilterBackend
@@ -18,8 +20,6 @@ from core.viewsets.mixins import UserAuditMixin
 from django.db import transaction
 from decimal import Decimal
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from ledger.constants import TxnType, UserAction, BaseFilterType
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -43,7 +43,9 @@ try:
 except ModuleNotFoundError:
     fuzz = None
 
-def log_transaction(instance : any, action: str, created: bool = False, **kwargs):
+
+def log_transaction(
+        instance: any, action: str, created: bool = False, **kwargs):
     """
     Logs a transaction action: created, updated, or deleted.
 
@@ -55,7 +57,7 @@ def log_transaction(instance : any, action: str, created: bool = False, **kwargs
     from ledger.serializers.transactions import TransactionSerializer
 
     new_data = serialize_for_json(TransactionSerializer(instance).data)
-    
+
     performed_by = None
     old_data = None
 
@@ -83,21 +85,26 @@ def log_transaction(instance : any, action: str, created: bool = False, **kwargs
         performed_by=performed_by
     )
 
+
 class TransactionFilterBackend(MUIBaseFilterBackend):
     date_field = "transaction_at"
     empty_string_fields = ["name", "notes", "store__name", "place__name"]
     filter_type = BaseFilterType.TRANSACTION
 
+
 def _clean_name(name: str):
     return name.replace("NLD", "").strip()
+
 
 def _get_first_word(value: str) -> str | None:
     parts = value.split()
     return smart_title(" ".join(parts[:1])) if parts else None
 
+
 def _get_last_word(value: str) -> str | None:
     parts = value.split()
     return parts[-1].title() if parts else None
+
 
 def build_import_notes(row):
     note_parts = [row.get("notes", "")]
@@ -109,6 +116,7 @@ def build_import_notes(row):
 
     return " | ".join(part for part in note_parts if part)[:500] or None
 
+
 def build_import_place(row):
     code = row.get("code")
     if code not in PAYMENT_TYPES_LOOKUP:
@@ -119,7 +127,7 @@ def build_import_place(row):
     exlude_keywords = ("www.ovpay.nl",)
     if is_keyword_present(exlude_keywords, name):
         return None
-    
+
     return _get_last_word(name)
 
 
@@ -134,7 +142,7 @@ def build_import_store(row):
     exclude_keywords = ("www.ovpay.nl",)
     if is_keyword_present(exclude_keywords, name):
         return None
-        
+
     store = _get_first_word(name)
     place = _get_last_word(name)
 
@@ -142,12 +150,13 @@ def build_import_store(row):
         store = store.replace(place, "").strip()
 
     return store
-    
+
 
 def normalize_text(text: str) -> str:
     text = (text or "").lower()
     words = text.split()
     return " ".join(words[:3])
+
 
 def match_import_category(text: str, lookup: dict[str, str]) -> Optional[str]:
     text = normalize_text(text)
@@ -179,39 +188,41 @@ def build_import_category(row: dict) -> str:
 
     if code == "OV" and transaction_type_name == "transfer":
         return "Savings"
-    
+
     # Check if there is salary indication in the description
     salary_keywords = ("salary", "salaris")
-    refund_keywords = ("refund", "return", "returned", "cashback","retour", 
+    refund_keywords = ("refund", "return", "returned", "cashback", "retour",
                        "retourpintransactie", "geretourneerd", "terugbetaling")
     allowance_keywords = ("allowance", "teruggaaf", "voorschot", "toeslag", )
-    gift_keywords = ("gift", "present", "donation", "cadeau", "schenking", "zakgeld", "extraatje", "geschenk")
+    gift_keywords = ("gift", "present", "donation", "cadeau",
+                     "schenking", "zakgeld", "extraatje", "geschenk")
     subscription_keywords = ("subscription", "abonnement", "abonnementen")
-    
+
     if is_keyword_present(salary_keywords, notes):
         return "Salary"
-    
+
     if is_keyword_present(refund_keywords, notes):
         return "Refund"
-    
+
     if is_keyword_present(allowance_keywords, notes):
         return "Allowance"
-    
+
     if is_keyword_present(gift_keywords, notes):
         return "Gift"
-     
+
     if is_keyword_present(subscription_keywords, notes):
         return "Subscriptions"
-    
+
     category = match_import_category(name, IMPORT_TXN_CATEGORIES)
-    
+
     if category:
         return category
 
     return "Others"
 
 
-def import_transaction_exists(*, user, account_id: int, row: dict[str, object]) -> bool:
+def import_transaction_exists(
+        *, user, account_id: int, row: dict[str, object]) -> bool:
     transaction_type_name = row["transaction_type_name"]
     amount = row["amount"]
     transaction_at = row["transaction_at"]
@@ -239,7 +250,8 @@ class ImportTransactionsView(APIView):
 
     def post(self, request):
         uploaded_file = request.FILES.get("file")
-        account_id = request.data.get("account_id") or request.data.get("account")
+        account_id = request.data.get(
+            "account_id") or request.data.get("account")
         user = request.user
 
         if not uploaded_file:
@@ -253,7 +265,9 @@ class ImportTransactionsView(APIView):
             return Response({"detail": str(exc)}, status=400)
 
         if not parsed_rows:
-            return Response({"detail": "No importable transactions were found in the uploaded file."}, status=400)
+            return Response(
+                {"detail": "No transactions were found in the uploaded file."},
+                status=400)
 
         transaction_type_map = {
             txn_type.name: txn_type
@@ -263,8 +277,10 @@ class ImportTransactionsView(APIView):
         }
         created_ids = []
         skipped_count = 0
-        ordered_rows = sorted(parsed_rows, key=lambda row: (row["transaction_at"], row["index"]))
-        savings_category = Category.objects.filter(name="Savings", created_by=user).first()
+        ordered_rows = sorted(parsed_rows, key=lambda row: (
+            row["transaction_at"], row["index"]))
+        savings_category = Category.objects.filter(
+            name="Savings", created_by=user).first()
 
         with transaction.atomic():
             viewset = TransactionViewSet()
@@ -280,8 +296,9 @@ class ImportTransactionsView(APIView):
                     skipped_count += 1
                     continue
                 else:
-                    transaction_type = transaction_type_map[row["transaction_type_name"]]
-                    pair_transaction_id = None
+                    transaction_type = transaction_type_map[
+                        row["transaction_type_name"]]
+                    pair_account_id = None
                     main_account_id = account_id
 
                     savings_account = row.get('savings_account', None)
@@ -289,30 +306,38 @@ class ImportTransactionsView(APIView):
                     # If there is a savings account, use it
                     if savings_account:
                         account_instance = get_or_create_instance(
-                            Account, savings_account, user, 
-                                defaults={'is_default': False, "is_shared": False, "is_savings": True, 
-                                          "count_in_assets": False, "user_id": user.id }, 
-                                filter_by_user=True,
-                            )
+                            Account, savings_account, user,
+                            defaults={'is_default': False, "is_shared": False,
+                                      "is_savings": True,
+                                      "count_in_assets": False,
+                                      "user_id": user.id},
+                            filter_by_user=True,
+                        )
                         account_instance.categories.set([savings_category])
-                        transaction_type =  transaction_type_map[row["transaction_type_name"]]
+                        transaction_type = transaction_type_map[
+                            row["transaction_type_name"]]
 
-                        pair_transaction_id = account_instance.id
-                        # If `is_savings_credit` is true, swap the account_id and pair_transaction
+                        pair_account_id = account_instance.id
+                        # If `is_savings_credit` is true, swap the
+                        # account_id and pair_account
                         if is_savings_credit:
                             main_account_id = account_instance.id
-                            pair_transaction_id = account_id
+                            pair_account_id = account_id
 
                     is_income = row["transaction_type_name"] == TxnType.INCOME
-                    is_transfer = row["transaction_type_name"] == TxnType.TRANSFER
-            
+                    is_transfer = row[
+                        "transaction_type_name"] == TxnType.TRANSFER
+
                     payload = {
                         "account_id": main_account_id,
                         "user_id": user.id,
                         "transaction_type_id": transaction_type.id,
                         "amount": str(row["amount"]),
-                        "net_amount": str(row["amount"]) if is_income else None,
-                        "debit_month_year": row["transaction_at"].strftime("%Y-%m-%d") if is_income else None,
+                        "net_amount": str(row[
+                            "amount"]) if is_income else None,
+                        "debit_month_year": row[
+                            "transaction_at"].strftime(
+                                "%Y-%m-%d") if is_income else None,
                         "name": row["name"],
                         "place_name": build_import_place(row) or None,
                         "store_name": build_import_store(row) or None,
@@ -322,15 +347,17 @@ class ImportTransactionsView(APIView):
                         "transaction_at": row["transaction_at"],
                     }
 
-                    if is_transfer and pair_transaction_id is not None:
-                        payload["pair_transaction"] = pair_transaction_id
-                        
-                    serializer = TransactionSerializer(data=payload, context={"request": request})
+                    if is_transfer and pair_account_id is not None:
+                        payload["pair_account"] = pair_account_id
+
+                    serializer = TransactionSerializer(
+                        data=payload, context={"request": request})
                     serializer.is_valid(raise_exception=True)
 
-                    instance = viewset.create_transaction_from_data(serializer, payload)
+                    instance = viewset.create_transaction_from_data(
+                        serializer, payload)
                     created_ids.append(instance.id)
-                
+
         return Response(
             {
                 "created_count": len(created_ids),
@@ -339,6 +366,7 @@ class ImportTransactionsView(APIView):
             },
             status=201,
         )
+
 
 class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
     serializer_class = TransactionSerializer
@@ -386,7 +414,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 "category",
                 "place",
                 "account",
-                "transaction_type"
+                "transaction_type",
             )
             .visible_to(self.request.user)
         )
@@ -394,7 +422,8 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
     def validate_debit_month_year(self, value):
         # If frontend sends "2026-01"
         if isinstance(value, str) and len(value) == 7:
-            return timezone.make_aware(timezone.datetime.strptime(value, "%Y-%m")).date()
+            return timezone.make_aware(
+                timezone.datetime.strptime(value, "%Y-%m")).date()
         return value
 
     def _get_account_id_from_payload(self, data):
@@ -426,15 +455,17 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
         )
         transaction_type_name = transaction_type.name
         with transaction.atomic():
-            store_instance = get_or_create_instance(Store, data.get("store"), user)
-            place_instance = get_or_create_instance(Place, data.get("place"), user)
-            
+            store_instance = get_or_create_instance(
+                Store, data.get("store"), user)
+            place_instance = get_or_create_instance(
+                Place, data.get("place"), user)
+
             account = get_object_or_404(Account, pk=account_id)
-            if 'category' in data and data.get("category") != None:
+            if 'category' in data and data.get("category") is not None:
                 category_instance = get_or_create_instance(
                     Category, data.get("category"), user, {
                         "transaction_type": transaction_type,
-                    }) if data.get("category") else instance.category
+                    }) if data.get("category") else None
                 account.categories.add(category_instance)
             else:
                 category_instance = None
@@ -451,7 +482,8 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                     "previous_balance": previous_balance
                 })
 
-                clear_validated_keys(serializer.validated_data, ["pair_transaction", "amount"])
+                clear_validated_keys(serializer.validated_data, [
+                                     "pair_account", "amount"])
 
             elif transaction_type_name == TxnType.EXPENSES:
                 account = self._get_locked_account_for_user(account_id)
@@ -470,19 +502,25 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 })
 
                 clear_validated_keys(serializer.validated_data,
-                                    ["pair_transaction", "net_amount", "gross_amount", "debit_month_year"])
+                                     ["pair_account",
+                                      "net_amount",
+                                      "gross_amount",
+                                      "debit_month_year"])
 
-            elif transaction_type_name ==  TxnType.TRANSFER:
-                pair_id = int(data.get("pair_transaction", 0))
+            elif transaction_type_name == TxnType.TRANSFER:
+                pair_id = int(data.get("pair_account", 0))
                 if account_id == pair_id:
-                    raise ValidationError("Cannot transfer to the same account")
+                    raise ValidationError(
+                        "Cannot transfer to the same account")
 
-                account_map = self._get_locked_accounts_for_user([account_id, pair_id])
+                account_map = self._get_locked_accounts_for_user(
+                    [account_id, pair_id])
                 from_acc = account_map.get(account_id)
                 to_acc = account_map.get(pair_id)
 
                 if not from_acc or not to_acc:
-                    raise ValidationError({"non_field_errors": ["Invalid account(s)"]})
+                    raise ValidationError(
+                        {"non_field_errors": ["Invalid account(s)"]})
 
                 if from_acc.balance < amount:
                     notes = data.get("notes", "")
@@ -505,13 +543,16 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 serializer.validated_data.update({
                     "previous_balance": from_previous,
                     "pair_previous_balance": to_previous,
-                    "pair_transaction": to_acc
+                    "pair_account": to_acc
                 })
 
                 account = from_acc
 
-                clear_validated_keys(serializer.validated_data,
-                                    ["net_amount", "gross_amount", "debit_month_year"])
+                clear_validated_keys(serializer.validated_data, [
+                                         "net_amount",
+                                         "gross_amount",
+                                         "debit_month_year"
+                                         ])
 
             instance = serializer.save(
                 user=self.request.user,
@@ -522,10 +563,11 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 category=category_instance,
             )
 
-        log_transaction(instance=instance, action=UserAction.CREATE, created=True)
+        log_transaction(instance=instance,
+                        action=UserAction.CREATE, created=True)
 
         return instance
-    
+
     def perform_create(self, serializer):
         self.create_transaction_from_data(serializer, self.request.data)
 
@@ -534,32 +576,38 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
         data = request.data
         user = request.user
 
-        account_id = data.get("account") or data.get("account_id") or instance.account_id
-        transaction_type_id = data.get("transaction_type_id", instance.transaction_type_id)
+        account_id = data.get("account") or data.get(
+            "account_id") or instance.account_id
+        transaction_type_id = data.get(
+            "transaction_type_id", instance.transaction_type_id)
         transaction_type = TransactionType.objects.get(pk=transaction_type_id)
-        transaction_type_name = transaction_type.name 
-        pair_transaction_id = data.get("pair_transaction", getattr(instance, "pair_transaction_id", None))
-        pair_transaction_id = int(pair_transaction_id) if pair_transaction_id else None
+        transaction_type_name = transaction_type.name
+        pair_account_id = data.get("pair_account", getattr(
+            instance, "pair_account_id", None))
+        pair_account_id = int(
+            pair_account_id) if pair_account_id else None
 
-        new_amount = Decimal(data.get("amount") or instance.amount or 0)        
-        
+        new_amount = Decimal(data.get("amount") or instance.amount or 0)
+
         with transaction.atomic():
 
             # Update related instances if provided
-            if 'store' in data and data.get("store") != None:
+            if 'store' in data and data.get("store") is not None:
                 store_instance = get_or_create_instance(
-                    Store, data.get("store"), user) if data.get("store") else instance.store
+                    Store, data.get("store"), user) if data.get(
+                        "store") else instance.store
             else:
                 store_instance = None
 
-            if 'place' in data and data.get("place") != None:
+            if 'place' in data and data.get("place") is not None:
                 place_instance = get_or_create_instance(
-                    Place, data.get("place"), user) if data.get("place") else instance.place
+                    Place, data.get("place"), user) if data.get(
+                        "place") else instance.place
             else:
                 place_instance = None
 
             account = get_object_or_404(Account, pk=account_id)
-            if 'category' in data and data.get("category") != None:
+            if 'category' in data and data.get("category") is not None:
                 category_instance = get_or_create_instance(
                     Category, data.get("category"), user, {
                         "transaction_type": transaction_type,
@@ -581,10 +629,10 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
             # Lock all possible accounts
             account_ids = {instance.account_id, account_id}
-            if instance.pair_transaction_id:
-                account_ids.add(instance.pair_transaction_id)
-            if pair_transaction_id:
-                account_ids.add(pair_transaction_id)
+            if instance.pair_account_id:
+                account_ids.add(instance.pair_account_id)
+            if pair_account_id:
+                account_ids.add(pair_account_id)
 
             account_map = self._get_locked_accounts_for_user(account_ids)
 
@@ -598,7 +646,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 old_account.balance += instance.amount
 
             elif instance.transaction_type.name == TxnType.TRANSFER:
-                old_pair = account_map.get(instance.pair_transaction_id)
+                old_pair = account_map.get(instance.pair_account_id)
                 old_account.balance += instance.amount
                 old_pair.balance -= instance.amount
                 old_pair.save()
@@ -609,7 +657,8 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             new_account = account_map.get(account_id)
 
             if transaction_type_name == TxnType.INCOME:
-                new_net = Decimal(data.get("net_amount", instance.net_amount or 0))
+                new_net = Decimal(
+                    data.get("net_amount", instance.net_amount or 0))
                 prev_balance = new_account.balance
                 new_account.balance += new_net
 
@@ -626,7 +675,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 data["previous_balance"] = prev_balance
 
             elif transaction_type_name == TxnType.TRANSFER:
-                pair_account = account_map.get(pair_transaction_id)
+                pair_account = account_map.get(pair_account_id)
 
                 if new_account.balance < new_amount:
                     raise ValidationError({
@@ -642,7 +691,7 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
                 data["previous_balance"] = from_prev
                 data["pair_previous_balance"] = to_prev
-                data["pair_transaction"] = pair_transaction_id
+                data["pair_account"] = pair_account_id
 
             new_account.save()
 
@@ -668,37 +717,42 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
         with transaction.atomic():
             # INCOME → subtract the previously added net_amount
-            if transaction_type == TxnType.INCOME and instance.account_id and instance.net_amount:
-                account = Account.objects.select_for_update().get(pk=instance.account_id)
+            if transaction_type == TxnType.INCOME and instance.account_id and \
+                    instance.net_amount:
+                account = Account.objects.select_for_update().get(
+                    pk=instance.account_id)
                 previous_balance = account.balance
                 account.balance -= Decimal(instance.net_amount)
                 account.save()
 
             # EXPENSES → add back the previously deducted amount
-            elif transaction_type == TxnType.EXPENSES and instance.account_id and instance.amount:
-                account = Account.objects.select_for_update().get(pk=instance.account_id)
+            elif transaction_type == TxnType.EXPENSES and \
+                instance.account_id and \
+                    instance.amount:
+                account = Account.objects.select_for_update().get(
+                    pk=instance.account_id)
                 previous_balance = account.balance
                 account.balance += Decimal(instance.amount)
                 account.save()
 
             # TRANSFER → reverse both sides
             elif transaction_type == TxnType.TRANSFER:
-                if not instance.account_id or not instance.pair_transaction_id:
+                if not instance.account_id or not instance.pair_account_id:
                     raise ValidationError("Invalid transfer accounts")
 
                 accounts = Account.objects.select_for_update().filter(
-                    pk__in=[instance.account_id, instance.pair_transaction_id]
+                    pk__in=[instance.account_id, instance.pair_account_id]
                 )
                 account_dict = {acc.pk: acc for acc in accounts}
 
                 from_account = account_dict.get(instance.account_id)
-                to_account = account_dict.get(instance.pair_transaction_id)
+                to_account = account_dict.get(instance.pair_account_id)
 
                 if not from_account or not to_account:
                     raise ValidationError("Invalid account(s)")
 
                 amount = Decimal(instance.amount or 0)
-                
+
                 # Save previous balances
                 previous_balance = from_account.balance
                 to_prev = to_account.balance
@@ -711,10 +765,10 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 to_account.save()
 
                 instance.pair_previous_balance = to_prev
-                
+
             instance.previous_balance = previous_balance
             instance.save()
-            
+
             log_transaction(instance=instance, action=UserAction.DELETE)
 
             # Finally delete the transaction
@@ -733,8 +787,8 @@ class GetInitialTransactionDataView(APIView):
                     .prefetch_related("categories")
                     )
         categories = Category.objects.filter(
-                        accounts__in=accounts
-                    ).distinct()
+            accounts__in=accounts
+        ).distinct()
         tags = Tag.objects.all()
         stores = Store.objects.all()
         places = Place.objects.all()
@@ -746,7 +800,7 @@ class GetInitialTransactionDataView(APIView):
             "tags": TagSimpleSerializer(tags, many=True).data,
             "stores": StoreSimpleSerializer(stores, many=True).data,
             "places": PlaceSimpleSerializer(places, many=True).data,
-            "transaction_types" : TransactionTypeSimpleSerializer(
+            "transaction_types": TransactionTypeSimpleSerializer(
                 TransactionType.objects.all(), many=True).data
         }
 

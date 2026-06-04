@@ -16,7 +16,7 @@ class StoreSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "name": {"validators": []}
         }
-        
+
     def validate(self, attrs):
         request = self.context.get("request")
         user = getattr(request, "user", None)
@@ -35,6 +35,8 @@ class StoreSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Store already exists.")
 
         return attrs
+
+
 class StoreSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store

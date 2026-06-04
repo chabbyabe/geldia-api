@@ -9,17 +9,20 @@ from rest_framework.response import Response
 from core.pagination import CustomPageNumberPagination
 from core.viewsets.mixins import UserAuditMixin
 from ledger.models import Category
-from ledger.serializers.categories import CategorySerializer, CategoryTreeSerializer
+from ledger.serializers.categories import CategorySerializer, \
+      CategoryTreeSerializer
 
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIBaseFilterBackend
 from ledger.constants import BaseFilterType
 
+
 class CategoryFilter(MUIBaseFilterBackend):
     date_field = None
     empty_string_fields = ["name", "notes"]
     filter_type = BaseFilterType.CATEGORY
+
 
 class CategoryViewSet(UserAuditMixin, viewsets.ModelViewSet):
     serializer_class = CategorySerializer
@@ -53,7 +56,9 @@ class CategoryViewSet(UserAuditMixin, viewsets.ModelViewSet):
             return base_qs.select_related("transaction_type").prefetch_related(
                 Prefetch(
                     "category_set",
-                    queryset=base_qs.select_related("transaction_type", "parent_category"),
+                    queryset=base_qs.select_related(
+                        "transaction_type",
+                        "parent_category"),
                     to_attr="prefetched_children",
                 )
             )
@@ -61,8 +66,9 @@ class CategoryViewSet(UserAuditMixin, viewsets.ModelViewSet):
         return base_qs
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset()).filter(parent_category__isnull=True)
-        
+        queryset = self.filter_queryset(self.get_queryset()).filter(
+            parent_category__isnull=True)
+
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = CategoryTreeSerializer(page, many=True)
@@ -70,7 +76,7 @@ class CategoryViewSet(UserAuditMixin, viewsets.ModelViewSet):
 
         serializer = CategoryTreeSerializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         return Response(CategoryTreeSerializer(instance).data)

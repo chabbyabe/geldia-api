@@ -4,6 +4,7 @@ from rest_framework import serializers
 from ledger.models import Tag
 from users.serializers import UserSimpleSerializer
 
+
 class TagSerializer(serializers.ModelSerializer):
     created_by = UserSimpleSerializer(read_only=True)
     updated_by = UserSimpleSerializer(read_only=True)
@@ -34,6 +35,7 @@ class TagSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "name": {"validators": []}
         }
+
 
 class TagSimpleSerializer(serializers.ModelSerializer):
     class Meta:

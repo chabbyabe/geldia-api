@@ -11,7 +11,8 @@ from core.pagination import CustomPageNumberPagination
 from ledger.constants import BaseFilterType
 from ledger.filters import MUIBaseFilterBackend
 from ledger.models import AccountLog, TransactionLog
-from ledger.serializers.logs import AccountLogSerializer, TransactionLogSerializer
+from ledger.serializers.logs import AccountLogSerializer, \
+    TransactionLogSerializer
 from users.models import Account
 
 
@@ -71,7 +72,8 @@ class AccountLogViewSet(viewsets.ModelViewSet):
     def _get_visible_account(self, account: Account) -> Account:
         user = self.request.user
         if not Account.objects.visible_to(user).filter(pk=account.pk).exists():
-            raise ValidationError({"account_id": ["You do not have access to this account."]})
+            raise ValidationError({"account_id": [
+                "You do not have access to this account."]})
         return account
 
     def perform_create(self, serializer):
@@ -94,7 +96,8 @@ class AccountLogViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You cannot update this account log")
 
         account = serializer.validated_data.get("account", instance.account)
-        serializer.save(account=self._get_visible_account(account) if account else None)
+        serializer.save(account=self._get_visible_account(
+            account) if account else None)
 
     def perform_destroy(self, instance):
         if (
@@ -140,7 +143,7 @@ class TransactionLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         f"{json_field}net_amount",
         f"{json_field}gross_amount",
         f"{json_field}debit_month_year",
-        f"{json_field}pair_transaction__name",
+        f"{json_field}pair_account__name",
         "created_at",
     ]
     ordering = ["-created_at"]

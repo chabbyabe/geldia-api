@@ -6,8 +6,9 @@ from rest_framework import serializers
 
 from users.models import Account, User
 from users.serializers import UserSimpleSerializer
-from ledger.models import Category
+from ledger.models import Category, Transaction
 from ledger.serializers.categories import CategorySimpleSerializer
+from django.db.models import Q
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -30,18 +31,29 @@ class AccountSerializer(serializers.ModelSerializer):
     )
     has_transactions = serializers.SerializerMethodField()
     transactions = serializers.SerializerMethodField()
+
     class Meta:
         model = Account
         exclude = ['created_by', 'updated_by', 'deleted_by']
         read_only_fields = ['id', 'created_at', 'updated_at', 'deleted_at']
- 
+
     def get_has_transactions(self, obj: Account) -> bool:
         return obj.transactions.exists()
-    
+
     def get_transactions(self, obj: Account):
         from ledger.serializers.transactions import TransactionSerializer
-        transactions = obj.transactions.order_by("-transaction_at")[:5]
-        return TransactionSerializer(transactions, many=True).data
+
+        transactions = (
+            Transaction.objects
+            .filter(Q(account__id=obj.id) | Q(pair_account__id=obj.id))
+            .order_by("-transaction_at")[:5]
+        )
+
+        return TransactionSerializer(
+            transactions,
+            many=True,
+            context=self.context,
+        ).data
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         request = self.context["request"]
@@ -68,9 +80,9 @@ class AccountSerializer(serializers.ModelSerializer):
 
 class AccountSimpleSerializer(serializers.ModelSerializer):
     categories = CategorySimpleSerializer(many=True, read_only=True)
+
     class Meta:
         model = Account
-        fields = ["id", "name", "icon", "color", "balance", "is_default", "is_savings", "user_id", "categories"]
+        fields = ["id", "name", "icon", "color", "balance", "is_default",
+                  "is_savings", "user_id", "categories"]
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
-
-     

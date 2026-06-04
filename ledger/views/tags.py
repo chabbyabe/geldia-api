@@ -12,13 +12,13 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from ledger.filters import MUIBaseFilterBackend
 from ledger.constants import BaseFilterType
-from django.db.models import Q
 
 
 class TagFilter(MUIBaseFilterBackend):
     date_field = None
     empty_string_fields = ["name"]
     filter_type = BaseFilterType.TAG
+
 
 class TagViewSet(UserAuditMixin, viewsets.ModelViewSet):
     serializer_class = TagSerializer

@@ -29,8 +29,10 @@ def serialize_account_snapshot(account: Account) -> dict:
             "is_shared": account.is_shared,
             "notes": account.notes,
             "user_id": account.user_id,
-            "shared_user_ids": list(account.shared_users.values_list("id", flat=True)),
-            "category_ids": list(account.categories.values_list("id", flat=True)),
+            "shared_user_ids": list(
+                account.shared_users.values_list("id", flat=True)),
+            "category_ids": list(
+                account.categories.values_list("id", flat=True)),
         }
     )
 
@@ -50,6 +52,7 @@ def log_account(
         old_data=old_data,
         new_data=new_data,
     )
+
 
 class AccountViewSet(viewsets.ModelViewSet, UserAuditMixin):
     queryset = Account.objects.all()
@@ -73,13 +76,13 @@ class AccountViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 )
             )
             .order_by(
-                '-is_owner', 
+                '-is_owner',
                 '-is_default',
                 '-created_at',
             )
             .distinct()
         )
-    
+
     def perform_create(self, serializer) -> None:
         instance = serializer.save(user=self.request.user)
         log_account(

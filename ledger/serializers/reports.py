@@ -57,7 +57,7 @@ class IncomeMonthSerializer(serializers.Serializer):
     net_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     companies = IncomeCompanySerializer(many=True)
 
-  
+
 class IncomeReportResponseSerializer(serializers.Serializer):
     selected_year = serializers.IntegerField()
     compare_year = serializers.IntegerField(allow_null=True, required=False)

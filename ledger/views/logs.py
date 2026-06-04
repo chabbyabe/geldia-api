@@ -132,7 +132,7 @@ class TransactionLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         "action",
         f"{json_field}id",
         f"{json_field}name",
-        f"{json_field}acount__name",
+        f"{json_field}account__name",
         f"{json_field}category__name",
         f"{json_field}transaction_type__name",
         f"{json_field}transaction",
@@ -150,8 +150,13 @@ class TransactionLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        visible_account_ids = list(
+            Account.objects.visible_to(user).values_list("id", flat=True)
+        )
+
         return TransactionLog.objects.filter(
-            Q(transaction__account__shared_users=user)
-            | Q(transaction__account__user=user)
+            Q(transaction__account_id__in=visible_account_ids)
+            | Q(new_data__account__id__in=visible_account_ids)
+            | Q(old_data__account__id__in=visible_account_ids)
             | Q(performed_by=user)
         ).distinct()

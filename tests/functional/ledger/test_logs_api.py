@@ -213,6 +213,69 @@ class TestTransactionLogViewSet:
         assert response.data["count"] == 1
         assert response.data["results"][0]["new_data"]["name"] == "April transaction"
 
+    def test_deleted_log_remains_visible_from_snapshot_data(self, client):
+        user = self._auth(client, username="txn_log_deleted_user")
+        transaction = self._transaction(user, name="Deleted transaction")
+        account_id = transaction.account_id
+
+        self._log(
+            user=user,
+            transaction=transaction,
+            action=UserAction.DELETE,
+            old_data={"id": transaction.id, "account": {"id": account_id}},
+            new_data={
+                "id": transaction.id,
+                "name": "Deleted transaction",
+                "account": {"id": account_id, "name": transaction.account.name},
+            },
+        )
+        transaction.delete()
+
+        response = client.get(reverse("ledger:transaction-log-list"))
+
+        assert response.status_code == http_client.OK
+        assert response.data["count"] == 1
+        assert response.data["results"][0]["action"] == UserAction.DELETE
+        assert response.data["results"][0]["new_data"]["name"] == "Deleted transaction"
+
+    def test_updated_log_stays_visible_when_transaction_moves_accounts(self, client):
+        user = self._auth(client, username="txn_log_updated_user")
+        original_account = self._account(user, name="Original", balance="500.00")
+        replacement_account = self._account(user, name="Replacement", balance="500.00")
+        transaction_type = self._txn_type()
+        transaction = Transaction.all_objects.create(
+            user=user,
+            account=replacement_account,
+            transaction_type=transaction_type,
+            name="Moved transaction",
+            amount=Decimal("10.00"),
+            transaction_at=timezone.make_aware(datetime(2026, 1, 10, 10, 0, 0)),
+            created_by=user,
+        )
+
+        self._log(
+            user=user,
+            transaction=transaction,
+            action=UserAction.UPDATE,
+            old_data={
+                "id": transaction.id,
+                "name": "Moved transaction",
+                "account": {"id": original_account.id, "name": original_account.name},
+            },
+            new_data={
+                "id": transaction.id,
+                "name": "Moved transaction",
+                "account": {"id": replacement_account.id, "name": replacement_account.name},
+            },
+        )
+
+        response = client.get(reverse("ledger:transaction-log-list"))
+
+        assert response.status_code == http_client.OK
+        assert response.data["count"] == 1
+        assert response.data["results"][0]["action"] == UserAction.UPDATE
+        assert response.data["results"][0]["old_data"]["account"]["id"] == original_account.id
+
 
 class TestAccountLogViewSet:
     def _auth(self, client, username="account_log_user", password="password123"):

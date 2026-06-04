@@ -1,9 +1,10 @@
 from django.contrib import admin
 from users.models import User, Account
 
+
 class UserAdmin(admin.ModelAdmin):
     search_fields = ["id", "first_name", "last_name", "email"]
-    
+
     def get_list_display(self, request):
         return [field.name for field in self.model._meta.fields]
 
@@ -67,7 +68,7 @@ class AccountsAdmin(admin.ModelAdmin):
     @admin.display(description='Categories')
     def category_list(self, obj):
         return ", ".join(obj.categories.values_list('name', flat=True))
-    
+
+
 admin.site.register(User, UserAdmin)
 admin.site.register(Account, AccountsAdmin)
-

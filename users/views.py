@@ -30,6 +30,7 @@ from users.serializers import (
 )
 from utils.seeding.categories import seed_categories_for_user
 
+
 class UserSettingsViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = None
@@ -41,6 +42,7 @@ class UserSettingsViewSet(ViewSet):
             .order_by("parent_category_id", "name")
         )
         return Response(CategorySerializer(categories, many=True).data)
+
 
 class UserRegisterView(generics.CreateAPIView, UserAuditMixin):
     serializer_class = UserRegistrationSerializer
@@ -62,7 +64,8 @@ class UserRegisterView(generics.CreateAPIView, UserAuditMixin):
 
         return Response(
             {
-                "detail": "Registration successful. Verify your email to activate your account.",
+                "detail": "Registration successful. "
+                "Verify your email to activate your account.",
                 "user": UserRegistrationSerializer(user).data["user"],
             },
             status=status.HTTP_201_CREATED,
@@ -80,13 +83,15 @@ class VerifyRegistrationView(APIView):
 
         serializer = EmailVerificationSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        is_verified, detail = verify_token(serializer.validated_data["token"], 
-                                           EmailVerification.Purpose.REGISTRATION)
+        is_verified, detail = verify_token(
+            serializer.validated_data["token"],
+            EmailVerification.Purpose.REGISTRATION)
         state = "success" if is_verified else "error"
 
         # Seed user categories after email verification
         if is_verified:
-            user = EmailVerification.objects.get(token=serializer.validated_data["token"]).user
+            user = EmailVerification.objects.get(
+                token=serializer.validated_data["token"]).user
             seed_categories_for_user(user.id)
 
         return render(
@@ -99,18 +104,21 @@ class VerifyRegistrationView(APIView):
                 "app_url": settings.APP_URL,
                 "manual_verify_url": settings.REGISTRATION_MANUAL_VERIFY_URL,
             },
-            status=status.HTTP_200_OK if is_verified else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_200_OK if is_verified else
+            status.HTTP_400_BAD_REQUEST,
         )
 
     def post(self, request):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        is_verified, detail = verify_token(serializer.validated_data["token"], 
-                                           EmailVerification.Purpose.REGISTRATION)
+        is_verified, detail = verify_token(
+            serializer.validated_data["token"],
+            EmailVerification.Purpose.REGISTRATION)
             
         return Response(
             {"detail": detail},
-            status=status.HTTP_200_OK if is_verified else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_200_OK if is_verified else
+            status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -122,7 +130,9 @@ class ManualRegistrationVerificationView(VerifyRegistrationView):
         token = request.query_params.get("token", "").strip()
 
         if token:
-            return redirect(f"{settings.REGISTRATION_VERIFY_URL}?{urlencode({'token': token})}")
+            return redirect(f"{
+                settings.REGISTRATION_VERIFY_URL}?{
+                    urlencode({'token': token})}")
 
         return render(
             request,
@@ -190,8 +200,9 @@ class VerifyPasswordChangeView(APIView):
 
         serializer = EmailVerificationSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        is_verified, detail = verify_token(serializer.validated_data["token"], 
-                                           EmailVerification.Purpose.PASSWORD_CHANGE)
+        is_verified, detail = verify_token(
+            serializer.validated_data["token"],
+            EmailVerification.Purpose.PASSWORD_CHANGE)
         state = "success" if is_verified else "error"
 
         return render(
@@ -202,19 +213,23 @@ class VerifyPasswordChangeView(APIView):
                 "detail": detail,
                 "state": state,
                 "app_url": settings.APP_URL,
-                "manual_verify_url": settings.PASSWORD_CHANGE_MANUAL_VERIFY_URL,
+                "manual_verify_url":
+                (settings.PASSWORD_CHANGE_MANUAL_VERIFY_URL),
             },
-            status=status.HTTP_200_OK if is_verified else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_200_OK if is_verified else
+            status.HTTP_400_BAD_REQUEST,
         )
 
     def post(self, request):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        is_verified, detail = verify_token(serializer.validated_data["token"],
-                                           EmailVerification.Purpose.PASSWORD_CHANGE)
+        is_verified, detail = verify_token(
+            serializer.validated_data["token"],
+            EmailVerification.Purpose.PASSWORD_CHANGE)
         return Response(
             {"detail": detail},
-            status=status.HTTP_200_OK if is_verified else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_200_OK if is_verified else
+            status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -226,7 +241,9 @@ class ManualPasswordChangeVerificationView(VerifyPasswordChangeView):
         token = request.query_params.get("token", "").strip()
 
         if token:
-            return redirect(f"{settings.PASSWORD_CHANGE_VERIFY_URL}?{urlencode({'token': token})}")
+            return redirect(f"{
+                settings.PASSWORD_CHANGE_VERIFY_URL}?{
+                    urlencode({'token': token})}")
 
         return render(
             request,
@@ -237,6 +254,7 @@ class ManualPasswordChangeVerificationView(VerifyPasswordChangeView):
             status=status.HTTP_200_OK,
         )
 
+
 class UserViewSet(viewsets.ModelViewSet, UserAuditMixin):
     serializer_class = UserSimpleSerializer
     permission_classes = [IsAuthenticated]
@@ -245,6 +263,7 @@ class UserViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
     def get_queryset(self):
         return User.objects.filter(is_superuser=False, deleted_at__isnull=True)
+
 
 class CompanyViewSet(UserAuditMixin, viewsets.ModelViewSet):
     serializer_class = CompanySerializer

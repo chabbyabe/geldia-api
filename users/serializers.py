@@ -12,11 +12,14 @@ from rest_framework.validators import UniqueValidator
 
 from .models import Company, User
 
+
 class UserRegistrationSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=40,
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="This username is already taken.")]
+        validators=[UniqueValidator(
+            queryset=User.objects.all(),
+            message="This username is already taken.")]
     )
     first_name = serializers.CharField(max_length=255)
     last_name = serializers.CharField(max_length=255)
@@ -52,14 +55,13 @@ class UserRegistrationSerializer(serializers.Serializer):
     def validate_password_1(self, password: str) -> str:
         return password.strip()
 
-
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
                 "A user with this email already exists."
             )
         return value
-    
+
     def validate(self, data):
         if data["password_1"] != data["password_2"]:
             raise serializers.ValidationError({
@@ -85,20 +87,19 @@ class UserRegistrationSerializer(serializers.Serializer):
         user.set_password(validated_data["password_1"])
         user.save()
 
-        return user 
+        return user
 
     def to_representation(self, instance: User) -> dict[str, dict[str, Any]]:
         return {
-                "user": {
-                    "id": instance.id,
-                    "username": instance.username,
-                    "first_name": instance.first_name,
-                    "last_name": instance.last_name,
-                    "email": instance.email
-                }
+            "user": {
+                "id": instance.id,
+                "username": instance.username,
+                "first_name": instance.first_name,
+                "last_name": instance.last_name,
+                "email": instance.email
+            }
         }
 
-        
 
 class UserSimpleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -134,9 +135,10 @@ class CompanySerializer(serializers.ModelSerializer):
                     existing = existing.exclude(pk=self.instance.pk)
 
                 if existing.exists():
-                    raise serializers.ValidationError("Company already exists.")
+                    raise serializers.ValidationError(
+                        "Company already exists.")
 
-            # Check existing current company 
+            # Check existing current company
             if is_current:
                 current_company = Company.objects.filter(
                     created_by=user,
@@ -144,10 +146,12 @@ class CompanySerializer(serializers.ModelSerializer):
                 )
 
                 if self.instance:
-                    current_company = current_company.exclude(pk=self.instance.pk)
+                    current_company = current_company.exclude(
+                        pk=self.instance.pk)
 
                 if current_company.exists():
-                    raise serializers.ValidationError("You already have a current company.")
+                    raise serializers.ValidationError(
+                        "You already have a current company.")
 
         return attrs
 
@@ -173,12 +177,16 @@ class UserDetailsSerializer(DjRestAuthUserDetailsSerializer):
     email_verified = serializers.SerializerMethodField()
 
     def get_email_verified(self, obj: User) -> dict[str, Any] | None:
-        return obj.email_verified_at is not None 
+        return obj.email_verified_at is not None
 
     def to_internal_value(self, data: Any) -> dict[str, Any]:
-        if isinstance(data, dict) and "company" in data and "company_id" not in data:
-            company_value = data.get("company")
+        if (
+            isinstance(data, dict)
+            and "company" in data
+            and "company_id" not in data
+        ):
             normalized_data = data.copy()
+            company_value = normalized_data["company"]
 
             if isinstance(company_value, dict):
                 company_value = company_value.get("id")
@@ -202,7 +210,7 @@ class UserDetailsSerializer(DjRestAuthUserDetailsSerializer):
             instance.company = company
             instance.company.is_current = True
             instance.company.save(update_fields=["is_current"])
-        else: 
+        else:
             instance.company = None
 
         instance.save()
@@ -234,10 +242,21 @@ class PasswordChangeRequestSerializer(serializers.Serializer):
     def to_internal_value(self, data: Any) -> dict[str, Any]:
         if isinstance(data, dict):
             normalized_data = data.copy()
-            if "new_password_1" not in normalized_data and "new_password1" in normalized_data:
-                normalized_data["new_password_1"] = normalized_data["new_password1"]
-            if "new_password_2" not in normalized_data and "new_password2" in normalized_data:
-                normalized_data["new_password_2"] = normalized_data["new_password2"]
+
+            if (
+                "new_password_1" not in normalized_data
+                and "new_password_1" in normalized_data
+            ):
+                normalized_data[
+                    "new_password_1"] = normalized_data["new_password_1"]
+
+            if (
+                "new_password_2" not in normalized_data
+                and "new_password2" in normalized_data
+            ):
+                normalized_data[
+                    "new_password_2"] = normalized_data["new_password2"]
+
             data = normalized_data
 
         return super().to_internal_value(data)
@@ -248,7 +267,8 @@ class PasswordChangeRequestSerializer(serializers.Serializer):
                 {"new_password_2": "The two password fields didn't match."}
             )
 
-        validate_password(attrs["new_password_1"], self.context["request"].user)
+        validate_password(attrs["new_password_1"],
+                          self.context["request"].user)
         return attrs
 
 
@@ -260,10 +280,21 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
     def to_internal_value(self, data: Any) -> dict[str, Any]:
         if isinstance(data, dict):
             normalized_data = data.copy()
-            if "new_password_1" not in normalized_data and "new_password1" in normalized_data:
-                normalized_data["new_password_1"] = normalized_data["new_password1"]
-            if "new_password_2" not in normalized_data and "new_password2" in normalized_data:
-                normalized_data["new_password_2"] = normalized_data["new_password2"]
+            if (
+                "new_password_1" not in normalized_data
+                and "new_password_1" in normalized_data
+            ):
+                normalized_data[
+                    "new_password_1"] = normalized_data["new_password_1"]
+
+            if (
+                "new_password_2" not in normalized_data
+                and "new_password2" in normalized_data
+            ):
+                normalized_data[
+                    "new_password_2"] = normalized_data["new_password2"]
+
+            data = normalized_data
             data = normalized_data
 
         return super().to_internal_value(data)

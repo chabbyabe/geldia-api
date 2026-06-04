@@ -11,6 +11,7 @@ from core.models import CommonInfo
 from .managers import UserManager
 from users.querysets.accounts import AccountQuerySet
 
+
 class Company(CommonInfo):
     name = models.CharField(max_length=255)
     is_current = models.BooleanField(default=False)
@@ -28,8 +29,10 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
 
     first_name = models.CharField(max_length=225)
     last_name = models.CharField(max_length=225)
-    username = models.CharField(max_length=50, unique=True, null=True, blank=True)
-    email = models.EmailField(max_length=500, unique=True, blank=True, null=True)
+    username = models.CharField(
+        max_length=50, unique=True, null=True, blank=True)
+    email = models.EmailField(
+        max_length=500, unique=True, blank=True, null=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     company = models.ForeignKey(
         Company,
@@ -102,7 +105,8 @@ class EmailVerification(models.Model):
 
 
 class Account(CommonInfo):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="accounts")
     name = models.CharField(max_length=255)
     icon = models.CharField(max_length=255, null=True, blank=True)
     color = models.CharField(
@@ -116,7 +120,8 @@ class Account(CommonInfo):
     count_in_assets = models.BooleanField(default=True)
     is_default = models.BooleanField(default=False)
     is_savings = models.BooleanField(default=False)
-    is_shared = models.BooleanField(default=False, help_text="Is shared with other person")
+    is_shared = models.BooleanField(
+        default=False, help_text="Is shared with other person")
     notes = models.CharField(max_length=300, blank=True)
     shared_users = models.ManyToManyField(
         User,
@@ -124,7 +129,8 @@ class Account(CommonInfo):
         related_name="shared_accounts",
         help_text="Users this account is shared with"
     )
-    categories = models.ManyToManyField("ledger.Category", blank=True, related_name="accounts")
+    categories = models.ManyToManyField(
+        "ledger.Category", blank=True, related_name="accounts")
 
     objects = AccountQuerySet.as_manager()
 

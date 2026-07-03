@@ -24,19 +24,20 @@ from ledger.constants import TxnType, UserAction, BaseFilterType
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
-from ledger.utils import (
+from ledger.utils.common import (
     get_or_create_instance,
     clear_validated_keys,
-    parse_transaction_import_file,
     serialize_for_json,
     smart_title,
     is_keyword_present
 )
+from ledger.utils.transactions import parse_transaction_import_file
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from ledger.constants import IMPORT_TXN_CATEGORIES, PAYMENT_TYPES_LOOKUP
 from typing import Optional
 from difflib import SequenceMatcher
+from ledger.utils.budgets import apply_budget_delta, get_budget_scope
 
 try:
     from rapidfuzz import fuzz
@@ -563,6 +564,17 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
                 category=category_instance,
             )
 
+            budget_scope = get_budget_scope(instance)
+            if budget_scope is not None:
+                budget_account_id, budget_category_id, budget_year, budget_month = budget_scope
+                apply_budget_delta(
+                    account_id=budget_account_id,
+                    category_id=budget_category_id,
+                    year=budget_year,
+                    month=budget_month,
+                    delta=Decimal(instance.amount or 0),
+                )
+
         log_transaction(instance=instance,
                         action=UserAction.CREATE, created=True)
 
@@ -573,6 +585,8 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
+        old_budget_scope = get_budget_scope(instance)
+        old_budget_amount = Decimal(instance.amount or 0)
         data = request.data
         user = request.user
 
@@ -709,11 +723,33 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
             if tags_instances is not None:
                 instance.tags.set(tags_instances)
 
+            new_budget_scope = get_budget_scope(instance)
+            if old_budget_scope is not None:
+                old_account_id, old_category_id, old_year, old_month = old_budget_scope
+                apply_budget_delta(
+                    account_id=old_account_id,
+                    category_id=old_category_id,
+                    year=old_year,
+                    month=old_month,
+                    delta=-old_budget_amount,
+                )
+            if new_budget_scope is not None:
+                new_account_id, new_category_id, new_year, new_month = new_budget_scope
+                apply_budget_delta(
+                    account_id=new_account_id,
+                    category_id=new_category_id,
+                    year=new_year,
+                    month=new_month,
+                    delta=Decimal(instance.amount or 0),
+                )
+
         log_transaction(instance=instance, action=UserAction.UPDATE)
         return Response(serializer.data)
 
     def perform_destroy(self, instance):
         transaction_type = instance.transaction_type.name
+        budget_scope = get_budget_scope(instance)
+        budget_amount = Decimal(instance.amount or 0)
 
         with transaction.atomic():
             # INCOME → subtract the previously added net_amount
@@ -768,6 +804,16 @@ class TransactionViewSet(viewsets.ModelViewSet, UserAuditMixin):
 
             instance.previous_balance = previous_balance
             instance.save()
+
+            if budget_scope is not None:
+                budget_account_id, budget_category_id, budget_year, budget_month = budget_scope
+                apply_budget_delta(
+                    account_id=budget_account_id,
+                    category_id=budget_category_id,
+                    year=budget_year,
+                    month=budget_month,
+                    delta=-budget_amount,
+                )
 
             log_transaction(instance=instance, action=UserAction.DELETE)
 

@@ -5,6 +5,7 @@ from .views.tags import TagViewSet
 from .views.stores import StoreViewSet
 from .views.categories import CategoryViewSet
 from .views.accounts import AccountViewSet
+from .views.budgets import BudgetViewSet
 from .views.transactions import TransactionViewSet, \
     GetInitialTransactionDataView, ImportTransactionsView
 from users.views import UserViewSet
@@ -22,6 +23,7 @@ router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'stores', StoreViewSet, basename='store')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'accounts', AccountViewSet, basename='account')
+router.register(r'budgets', BudgetViewSet, basename='budget')
 router.register(r'transactions', TransactionViewSet, basename='transaction')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')

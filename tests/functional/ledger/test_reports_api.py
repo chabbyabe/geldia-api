@@ -5,8 +5,8 @@ from http import client as http_client
 from django.urls import reverse
 from django.utils import timezone
 
-from ledger.constants import TxnType
-from ledger.models import Store, Transaction, TransactionType
+from ledger.constants import DefaultColors, TxnType
+from ledger.models import Store, Transaction, TransactionType, Category
 from tests import factories
 from users.models import Account
 
@@ -28,10 +28,17 @@ class TestReportViewSet:
         return transaction_type
 
     def _account(self, user, name="Main", balance="0.00"):
-        return Account.objects.create(user=user, name=name, balance=Decimal(balance))
+        return Account.objects.create(
+            user=user, name=name, balance=Decimal(balance))
 
     def _store(self, name, created_by):
         return Store.objects.create(name=name, created_by=created_by)
+
+    def _category(self, created_by, name="Salary"):
+        return Category.objects.create(
+            name=name,
+            created_by=created_by,
+            transaction_type=self._txn_type(TxnType.INCOME))
 
     def _income_transaction(
         self,
@@ -44,6 +51,7 @@ class TestReportViewSet:
         net_amount,
         store=None,
         created_by=None,
+        category=None
     ):
         return Transaction.all_objects.create(
             user=user,
@@ -56,6 +64,7 @@ class TestReportViewSet:
             debit_month_year=debit_month_year,
             store=store,
             created_by=created_by or user,
+            category=category
         )
 
     def test_income_report_requires_authentication(self, client):
@@ -64,9 +73,11 @@ class TestReportViewSet:
         assert response.status_code == http_client.UNAUTHORIZED
         assert response["content-type"] == "application/json"
 
-    def test_income_report_returns_monthly_aggregates_for_selected_year(self, client):
+    def test_income_report_returns_monthly_aggregates_for_selected_year(
+            self, client):
         user = self._auth(client)
-        other_user = factories.User(username="report_other_user", password="password123")
+        other_user = factories.User(
+            username="report_other_user", password="password123")
         selected_year = self._current_year()
         compare_year = selected_year - 1
 
@@ -80,6 +91,7 @@ class TestReportViewSet:
         beta = self._store("Beta BV", created_by=user)
         other_store = self._store("Other Co", created_by=other_user)
 
+        category = self._category(created_by=user, name="Salary")
         self._income_transaction(
             user=user,
             account=account,
@@ -88,6 +100,7 @@ class TestReportViewSet:
             gross_amount="2000.00",
             net_amount="1500.00",
             store=acme,
+            category=category
         )
         self._income_transaction(
             user=user,
@@ -97,6 +110,7 @@ class TestReportViewSet:
             gross_amount="1000.00",
             net_amount="700.00",
             store=beta,
+            category=category
         )
         self._income_transaction(
             user=user,
@@ -106,6 +120,7 @@ class TestReportViewSet:
             gross_amount="500.00",
             net_amount="400.00",
             store=None,
+            category=category
         )
         self._income_transaction(
             user=user,
@@ -115,6 +130,7 @@ class TestReportViewSet:
             gross_amount="999.00",
             net_amount="888.00",
             store=acme,
+            category=category
         )
 
         Transaction.all_objects.create(
@@ -125,6 +141,7 @@ class TestReportViewSet:
             amount=Decimal("99.00"),
             debit_month_year=date(selected_year, 1, 1),
             created_by=user,
+            category=category
         )
         self._income_transaction(
             user=other_user,
@@ -135,6 +152,7 @@ class TestReportViewSet:
             net_amount="2500.00",
             store=other_store,
             created_by=other_user,
+            category=category
         )
 
         response = client.get(
@@ -158,8 +176,13 @@ class TestReportViewSet:
         assert january["gross_amount"] == "3000.00"
         assert january["net_amount"] == "2200.00"
         assert january["companies"] == [
-            {"name": "Acme BV", "gross_amount": "2000.00", "net_amount": "1500.00"},
-            {"name": "Beta BV", "gross_amount": "1000.00", "net_amount": "700.00"},
+            {
+                "name": f"income-{selected_year}-01-01",
+                "category_name": "Salary",
+                "category_color": DefaultColors.PRIMARY,
+                "gross_amount": "3000.00",
+                "net_amount": "2200.00",
+            },
         ]
 
         assert february["month"] == 2
@@ -167,7 +190,13 @@ class TestReportViewSet:
         assert february["gross_amount"] == "500.00"
         assert february["net_amount"] == "400.00"
         assert february["companies"] == [
-            {"name": "-", "gross_amount": "500.00", "net_amount": "400.00"},
+            {
+                "name": f"income-{selected_year}-02-01",
+                "category_name": "Salary",
+                "category_color": DefaultColors.PRIMARY,
+                "gross_amount": "500.00",
+                "net_amount": "400.00",
+            },
         ]
 
         assert march["month"] == 3
@@ -179,10 +208,17 @@ class TestReportViewSet:
         assert compared_january["gross_amount"] == "999.00"
         assert compared_january["net_amount"] == "888.00"
         assert compared_january["companies"] == [
-            {"name": "Acme BV", "gross_amount": "999.00", "net_amount": "888.00"},
+            {
+                "name": f"income-{compare_year}-01-01",
+                "category_name": "Salary",
+                "category_color": DefaultColors.PRIMARY,
+                "gross_amount": "999.00",
+                "net_amount": "888.00",
+            },
         ]
 
-    def test_income_report_rejects_same_selected_and_compare_year(self, client):
+    def test_income_report_rejects_same_selected_and_compare_year(
+            self, client):
         self._auth(client, username="report_validation_user")
         current_year = self._current_year()
 

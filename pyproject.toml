@@ -22,10 +22,10 @@ uwsgi = "^2.0.31"
 mysqlclient = "^2.2.8"
 rapidfuzz = "^3.14.5"
 gunicorn = "^26.0.0"
+factory-boy = "^3.3.0"
 
 [tool.poetry.group.test.dependencies]
 pytest-django = "^4.7.0"
-factory-boy = "^3.3.0"
 
 [tool.poetry.group.dev.dependencies]
 django-naomi = "^0.8"

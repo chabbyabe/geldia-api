@@ -1,6 +1,6 @@
 from django.contrib import admin
 from ledger.models import Place, TransactionType, RecurringTransaction, \
-    Category, Transaction, Receipt, Store, Tag
+    Budget, Category, Transaction, Receipt, Store, Tag
 
 
 class CategoryAdmin(admin.ModelAdmin):
@@ -50,6 +50,11 @@ class TransactionAdmin(admin.ModelAdmin):
     list_filter = ["deleted_at"]
 
 
+class BudgetAdmin(admin.ModelAdmin):
+    search_fields = ["id", "account__name", "account__user__username", "category__name"]
+    list_display = ["id", "account", "category", "year", "month", "amount", "spent_amount"]
+
+
 class TransactionTagAdmin(admin.ModelAdmin):
     search_fields = ["id", "transaction", "tag"]
     list_display = ["id", "transaction", "tag", "deleted_at"]
@@ -64,3 +69,4 @@ admin.site.register(RecurringTransaction, RecurringTransactionAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(TransactionType, TransactionTypeAdmin)
+admin.site.register(Budget, BudgetAdmin)

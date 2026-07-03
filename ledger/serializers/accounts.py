@@ -86,3 +86,12 @@ class AccountSimpleSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "icon", "color", "balance", "is_default",
                   "is_savings", "user_id", "categories"]
         read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]
+
+
+class AccountOnlySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Account
+        fields = ["id", "name", "icon", "color", "balance", "is_default",
+                  "is_savings"]
+        read_only_fields = ["id", "created_at", "updated_at", "deleted_at"]

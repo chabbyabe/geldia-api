@@ -23,6 +23,12 @@ services:
     depends_on:
       - geldia-api
 
+networks:
+  geldia_api_net:
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+
 volumes:
   static_volume:
   media_volume:

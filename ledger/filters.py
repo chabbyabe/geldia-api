@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from django.db.models import Q
 from rest_framework.filters import BaseFilterBackend
-from ledger.utils import get_date_range
+from ledger.utils.common import get_date_range
 
 
 class MUIBaseFilterBackend(BaseFilterBackend):

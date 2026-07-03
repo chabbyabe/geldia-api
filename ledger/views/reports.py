@@ -9,7 +9,7 @@ from django.db.models.functions import TruncMonth
 import calendar
 from ledger.serializers.reports import ReportParamRequestSerializer, \
     IncomeReportResponseSerializer, ExpensesReportSerializer
-from ledger.utils import normalize_category
+from ledger.utils.common import normalize_category
 
 
 class ReportViewSet(ViewSet):
@@ -30,7 +30,9 @@ class ReportViewSet(ViewSet):
             .visible_to(request.user)
             .filter_by_transaction_type(TxnType.INCOME)
             .with_transaction_date()
-            .filter(debit_month_year__year__in=years)
+            .filter(debit_month_year__year__in=years,
+                    category__name__in=(
+                        "Salary", "Gift", "Allowance", "Others"))
         )
 
         data = (

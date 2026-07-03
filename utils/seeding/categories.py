@@ -4,10 +4,12 @@ from django.conf import settings
 from django.db import transaction
 from ledger.models import Category, TransactionType
 
-from ledger.utils import smart_title
+from ledger.utils.common import smart_title
+
+
 # -------------------------
 # CATEGORIES
-    # -------------------------
+# -------------------------
 def seed_categories_for_user(user_id, stdout=None):
     file_path = os.path.join(
         settings.BASE_DIR,

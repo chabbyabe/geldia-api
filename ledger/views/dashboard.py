@@ -14,7 +14,7 @@ from ledger.serializers.categories import CategoryOverviewSerializer
 from ledger.serializers.dashboard import SummaryOverviewSerializer, \
     YearOverviewQuerySerializer
 from ledger.serializers.transactions import TransactionSerializer
-from ledger.utils import get_date_range
+from ledger.utils.common import get_date_range
 from users.models import Account
 
 

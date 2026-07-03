@@ -11,7 +11,7 @@ from core.viewsets.mixins import UserAuditMixin
 from ledger.constants import UserAction
 from ledger.models import AccountLog
 from ledger.serializers.accounts import AccountSerializer
-from ledger.utils import serialize_for_json
+from ledger.utils.common import serialize_for_json
 from users.models import Account
 
 

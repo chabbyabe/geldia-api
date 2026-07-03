@@ -13,7 +13,7 @@ from ledger.serializers.stores import StoreSimpleSerializer
 from ledger.serializers.tags import TagSimpleSerializer
 from ledger.serializers.transaction_types \
     import TransactionTypeSimpleSerializer
-from ledger.utils import get_or_create_instance
+from ledger.utils.common import get_or_create_instance
 from users.models import Account, User
 from users.serializers import UserSimpleSerializer
 from rest_framework.exceptions import ValidationError

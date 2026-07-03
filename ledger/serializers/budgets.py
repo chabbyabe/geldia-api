@@ -118,8 +118,7 @@ class BudgetSerializer(serializers.ModelSerializer):
             if existing_months:
                 raise serializers.ValidationError(
                     "Yearly budget cannot be created because budgets already "
-                    f"exist for month(s): {', '.join(
-                        map(str, existing_months))}."
+                    f"exist for month(s): {', '.join(map(str, existing_months))}."
                 )
         else:
             qs = Budget.objects.filter(

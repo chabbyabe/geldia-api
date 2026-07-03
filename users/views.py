@@ -130,9 +130,11 @@ class ManualRegistrationVerificationView(VerifyRegistrationView):
         token = request.query_params.get("token", "").strip()
 
         if token:
-            return redirect(f"{
-                settings.REGISTRATION_VERIFY_URL}?{
-                    urlencode({'token': token})}")
+            query = urlencode({"token": token})
+
+            return redirect(
+                f"{settings.REGISTRATION_VERIFY_URL}?{query}"
+            )
 
         return render(
             request,
@@ -241,9 +243,11 @@ class ManualPasswordChangeVerificationView(VerifyPasswordChangeView):
         token = request.query_params.get("token", "").strip()
 
         if token:
-            return redirect(f"{
-                settings.PASSWORD_CHANGE_VERIFY_URL}?{
-                    urlencode({'token': token})}")
+            query = urlencode({"token": token})
+
+            return redirect(
+                f"{settings.PASSWORD_CHANGE_VERIFY_URL}?{query}"
+            )
 
         return render(
             request,

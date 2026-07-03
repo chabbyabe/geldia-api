@@ -247,6 +247,37 @@ class Transaction(CommonInfo):
         ordering = ["-id"]
 
 
+class Budget(CommonInfo):
+    account = models.ForeignKey(
+        "users.Account",
+        related_name="budgets",
+        on_delete=models.PROTECT,
+    )
+    category = models.ForeignKey(
+        Category,
+        related_name="budgets",
+        on_delete=models.PROTECT,
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    spent_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+
+    class Meta:
+        ordering = ["-year", "-month", "-id"]
+        unique_together = ("account", "category", "year", "month")
+
+    def __str__(self) -> str:
+        return (
+            f"{self.account} {self.category} budget "
+            f"{self.year}-{self.month:02d}"
+        )
+
+
 class Receipt(CommonInfo):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, related_name="receipts"
